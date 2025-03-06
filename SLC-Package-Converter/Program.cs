@@ -7,17 +7,21 @@ string destinationDirectory = @"C:\GIT\SLC-MediaOps";
 
 // Search for the .sln file in the destination directory
 string[] slnFiles = Directory.GetFiles(destinationDirectory, "*.sln", SearchOption.TopDirectoryOnly);
+string slnFile = null;
+string slnContent = null;
+string projectId = null;
+
 if (slnFiles.Length > 0)
 {
-    string slnFile = slnFiles[0];
-    string slnContent = File.ReadAllText(slnFile);
+    slnFile = slnFiles[0];
+    slnContent = File.ReadAllText(slnFile);
 
     // Extract the project ID of the first project
     string projectIdPattern = @"Project\(""\{(?<id>[A-F0-9\-]+)\}""\)";
     Match match = Regex.Match(slnContent, projectIdPattern);
     if (match.Success)
     {
-        string projectId = match.Groups["id"].Value;
+        projectId = match.Groups["id"].Value;
         Console.WriteLine($"First project ID: {projectId}");
     }
 }
@@ -48,16 +52,54 @@ if (Directory.Exists(sourceDirectory))
                 {
                     // Console.WriteLine($"Project directory exists: {projectPath}");
                     string destinationProjectPath = Path.Combine(destinationDirectory, projectName);
-                    DirectoryCopy(projectPath, destinationProjectPath, true);
+                    if (!Directory.Exists(destinationProjectPath))
+                    {
+                        DirectoryCopy(projectPath, destinationProjectPath, true);
 
-                    string destinationXmlPath = Path.Combine(destinationProjectPath, Path.GetFileName(file));
-                    File.Copy(file, destinationXmlPath, true);
+                        string destinationXmlPath = Path.Combine(destinationProjectPath, Path.GetFileName(file));
+                        File.Copy(file, destinationXmlPath, true);
+
+                        // Generate a new GUID for the project
+                        string newProjectGuid = Guid.NewGuid().ToString().ToUpper();
+
+                        // Add the project to the solution file
+                        if (slnFile != null && slnContent != null)
+                        {
+                            string projectEntry = $"Project(\"{{{projectId}}}\") = \"{projectName}\", \"{projectName}\\{projectName}.csproj\", \"{{{newProjectGuid}}}\"\nEndProject\n";
+                            int globalIndex = slnContent.IndexOf("Global");
+                            if (globalIndex > 0)
+                            {
+                                slnContent = slnContent.Insert(globalIndex, projectEntry);
+                                File.WriteAllText(slnFile, slnContent);
+                                // Console.WriteLine($"Added project {projectName} to solution file.");
+                            }
+                        }
+                    }
                 }
                 else
                 {
                     Console.WriteLine($"Project directory does not exist: {projectPath}");
                 }
             }
+        }
+    }
+
+    // Copy all other directories except the excluded ones and hidden directories
+    string[] excludedDirs = { "CompanionFiles", "Internal", "Documentation", "Dlls" };
+    DirectoryInfo sourceDirInfo = new DirectoryInfo(sourceDirectory);
+    foreach (DirectoryInfo dir in sourceDirInfo.GetDirectories())
+    {
+        if (Array.Exists(excludedDirs, d => d.Equals(dir.Name, StringComparison.OrdinalIgnoreCase)) ||
+            (dir.Attributes & FileAttributes.Hidden) == FileAttributes.Hidden ||
+            dir.Name.StartsWith("."))
+        {
+            continue;
+        }
+
+        string destinationDirPath = Path.Combine(destinationDirectory, dir.Name);
+        if (!Directory.Exists(destinationDirPath))
+        {
+            DirectoryCopy(dir.FullName, destinationDirPath, true);
         }
     }
 }
@@ -99,3 +141,4 @@ static void DirectoryCopy(string sourceDirName, string destDirName, bool copySub
         }
     }
 }
+
