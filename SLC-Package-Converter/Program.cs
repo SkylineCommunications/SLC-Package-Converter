@@ -22,6 +22,7 @@ try
         ProcessXmlFiles(slnFile, slnContent, projectId);
         CopyOtherDirectories();
         CheckCsprojFilesForDataMinerType(DestinationDirectory);
+        UpdateXMLFileNames(DestinationDirectory);
     }
     else
     {
@@ -194,38 +195,88 @@ void CheckCsprojFilesForDataMinerType(string directory)
             }
 
             string csFile = Path.Combine(Path.GetDirectoryName(csprojFile), Path.GetFileNameWithoutExtension(csprojFile) + ".cs");
-            if (File.Exists(csFile))
+            if (!File.Exists(csFile))
             {
-                string csContent = File.ReadAllText(csFile);
-                string dataMinerType = "AutomationScript";
-
-                if (csContent.Contains("[AutomationEntryPoint(AutomationEntryPointType.Types.OnApiTrigger)]"))
+                // Pick the first .cs file in the folder alphabetically if the corresponding .cs file is not found
+                string[] csFiles = Directory.GetFiles(Path.GetDirectoryName(csprojFile), "*.cs", SearchOption.TopDirectoryOnly);
+                if (csFiles.Length > 0)
                 {
-                    dataMinerType = "UserDefinedApi";
-                    LogInfo($"UserDefinedApi found in {csprojFile}");
-                }
-                else if (csContent.Contains("GQIMetaData"))
-                {
-                    dataMinerType = "AdHocDataSource";
-                    LogInfo($"GQI found in {csprojFile}");
+                    Array.Sort(csFiles, StringComparer.OrdinalIgnoreCase);
+                    csFile = csFiles[0];
+                    LogWarning($"Corresponding .cs file not found for {csprojFile}. Using {csFile} instead.");
                 }
                 else
                 {
-                    LogInfo($"Automation found in {csprojFile}");
+                    LogWarning($"No .cs files found in the directory for {csprojFile}");
+                    continue;
                 }
+            }
 
-                // Insert DataMinerType property before the closing </Project> tag
-                string propertyGroup = $"\n  <PropertyGroup>\n    <DataMinerType>{dataMinerType}</DataMinerType>\n  </PropertyGroup>\n";
-                int insertIndex = csprojContent.LastIndexOf("</Project>");
-                if (insertIndex != -1)
-                {
-                    csprojContent = csprojContent.Insert(insertIndex, propertyGroup);
-                    File.WriteAllText(csprojFile, csprojContent);
-                }
+            string csContent = File.ReadAllText(csFile);
+            string dataMinerType = "AutomationScript";
+
+            if (csContent.Contains("[AutomationEntryPoint(AutomationEntryPointType.Types.OnApiTrigger)]"))
+            {
+                dataMinerType = "UserDefinedApi";
+                LogInfo($"UserDefinedApi found in {csprojFile}");
+            }
+            else if (csContent.Contains("GQIMetaData"))
+            {
+                dataMinerType = "AdHocDataSource";
+                LogInfo($"GQI found in {csprojFile}");
             }
             else
             {
-                LogWarning($"Corresponding .cs file not found for {csprojFile}");
+                LogInfo($"Automation found in {csprojFile}");
+            }
+
+            // Insert DataMinerType property before the closing </Project> tag
+            string propertyGroup = $"\n  <PropertyGroup>\n    <DataMinerType>{dataMinerType}</DataMinerType>\n  </PropertyGroup>\n";
+            int insertIndex = csprojContent.LastIndexOf("</Project>");
+            if (insertIndex != -1)
+            {
+                csprojContent = csprojContent.Insert(insertIndex, propertyGroup);
+                File.WriteAllText(csprojFile, csprojContent);
+            }
+        }
+        catch (Exception ex)
+        {
+            LogError($"Error processing .csproj file {csprojFile}: {ex.Message}");
+        }
+    }
+}
+void UpdateXMLFileNames(string directory)
+{
+    string[] csprojFiles = Directory.GetFiles(directory, "*.csproj", SearchOption.AllDirectories);
+
+    foreach (string csprojFile in csprojFiles)
+    {
+        try
+        {
+            string xmlDirectory = Path.GetDirectoryName(csprojFile);
+            string directoryName = new DirectoryInfo(xmlDirectory).Name;
+            string xmlFilePath = Path.Combine(xmlDirectory, directoryName + ".xml");
+
+            if (File.Exists(xmlFilePath))
+            {
+                LogInfo($"XML file found with the same name as the directory: {xmlFilePath}");
+                continue;
+            }
+            else
+            {
+                LogWarning($"No XML file found with the same name as the directory: {xmlDirectory}");
+                string[] xmlFiles = Directory.GetFiles(xmlDirectory, "*.xml", SearchOption.TopDirectoryOnly);
+                string xmlFile = xmlFiles.FirstOrDefault();
+                if (xmlFile != null)
+                {
+                    string xmlFileName = Path.GetFileName(xmlFile);
+                    string csprojContent = File.ReadAllText(csprojFile);
+                    csprojContent = csprojContent.Replace(xmlFileName, directoryName + ".xml");
+                    File.WriteAllText(csprojFile, csprojContent);
+                    string newXmlFilePath = Path.Combine(xmlDirectory, directoryName + ".xml");
+                    LogInfo("Renaming XML file to match the directory name: " + newXmlFilePath);
+                    File.Move(xmlFile, newXmlFilePath);
+                }
             }
         }
         catch (Exception ex)
