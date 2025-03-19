@@ -21,8 +21,6 @@ try
     {
         ProcessXmlFiles(slnFile, slnContent, projectId);
         CopyOtherDirectories();
-        CheckCsprojFilesForDataMinerType(DestinationDirectory);
-        UpdateXMLFileNames(DestinationDirectory);
     }
     else
     {
