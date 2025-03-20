@@ -92,7 +92,7 @@ void ProcessXmlFiles(string slnFile)
                         LogInfo($"Deleted file: {csFilePath}");
                     }
                     File.WriteAllText(Path.Combine(projectDirectory, $"{projectName}.xml"), File.ReadAllText(file));
-                    MergeCsprojFiles(Path.Combine(Path.GetDirectoryName(file), $"{projectName}.csproj"), Path.Combine(projectDirectory, $"{projectName}.csproj"));
+                    MergeCsprojFiles(Path.Combine(Path.Combine(Path.GetDirectoryName(file), projectName), $"{projectName}.csproj"), Path.Combine(projectDirectory, $"{projectName}.csproj"));
                     // Log the result
                     LogInfo($"Created and added template: {templateName} in directory {projectName}");
                 }
@@ -241,30 +241,77 @@ void MergeCsprojFiles(string sourceCsprojPath, string destinationCsprojPath)
     XDocument sourceDoc = XDocument.Load(sourceCsprojPath);
     XDocument destinationDoc = XDocument.Load(destinationCsprojPath);
 
-    var sourceImports = sourceDoc.Descendants("Import");
-    var sourcePackageReferences = sourceDoc.Descendants("PackageReference");
+    // Get the default namespace (if any)
+    XNamespace sourceNs = sourceDoc.Root?.GetDefaultNamespace() ?? XNamespace.None;
+    XNamespace destNs = destinationDoc.Root?.GetDefaultNamespace() ?? XNamespace.None;
 
-    XElement destinationProject = destinationDoc.Element("Project");
+    var sourceImports = sourceDoc.Descendants(sourceNs + "Import");
+    var sourcePackageReferences = sourceDoc.Descendants(sourceNs + "PackageReference");
+    var sourceProjectReferences = sourceDoc.Descendants(sourceNs + "ProjectReference");
+
+    XElement destinationProject = destinationDoc.Element(destNs + "Project");
+    var destinationItemGroups = destinationProject.Elements(destNs + "ItemGroup").ToList();
 
     // Merge Import elements
     foreach (var import in sourceImports)
     {
-        destinationProject.Add(new XElement(import));
+        var existingImport = destinationProject.Elements(destNs + "Import")
+            .FirstOrDefault(e => e.Attribute("Project")?.Value == import.Attribute("Project")?.Value);
+        if (existingImport != null)
+        {
+            existingImport.ReplaceWith(new XElement(import));
+        }
+        else
+        {
+            destinationProject.Add(new XElement(import));
+        }
     }
 
     // Merge PackageReference elements
-    var destinationItemGroups = destinationProject.Elements("ItemGroup").ToList();
-    XElement packageReferenceGroup = destinationItemGroups.FirstOrDefault(ig => ig.Elements("PackageReference").Any());
+    XElement packageReferenceGroup = destinationItemGroups.FirstOrDefault(ig => ig.Elements(destNs + "PackageReference").Any());
 
     if (packageReferenceGroup == null)
     {
-        packageReferenceGroup = new XElement("ItemGroup");
+        packageReferenceGroup = new XElement(destNs + "ItemGroup");
         destinationProject.Add(packageReferenceGroup);
     }
 
     foreach (var packageReference in sourcePackageReferences)
     {
-        packageReferenceGroup.Add(new XElement(packageReference));
+        var existingPackageReference = packageReferenceGroup.Elements(destNs + "PackageReference")
+            .FirstOrDefault(e => e.Attribute("Include")?.Value == packageReference.Attribute("Include")?.Value);
+        if (existingPackageReference != null)
+        {
+            existingPackageReference.ReplaceWith(new XElement(packageReference));
+        }
+        else
+        {
+            packageReferenceGroup.Add(new XElement(packageReference));
+        }
+    }
+
+    // Merge ProjectReference elements
+    XElement projectReferenceGroup = destinationItemGroups.FirstOrDefault(ig => ig.Elements(destNs + "ProjectReference").Any());
+
+    if (projectReferenceGroup == null)
+    {
+        projectReferenceGroup = new XElement(destNs + "ItemGroup");
+        destinationProject.Add(projectReferenceGroup);
+    }
+
+    foreach (var projectReference in sourceProjectReferences)
+    {
+        LogInfo($"Copying {projectReference}");
+        var existingProjectReference = projectReferenceGroup.Elements(destNs + "ProjectReference")
+            .FirstOrDefault(e => e.Attribute("Include")?.Value == projectReference.Attribute("Include")?.Value);
+        if (existingProjectReference != null)
+        {
+            existingProjectReference.ReplaceWith(new XElement(projectReference));
+        }
+        else
+        {
+            projectReferenceGroup.Add(new XElement(projectReference));
+        }
     }
 
     destinationDoc.Save(destinationCsprojPath);
