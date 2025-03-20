@@ -241,82 +241,84 @@ void MergeCsprojFiles(string sourceCsprojPath, string destinationCsprojPath)
     XDocument sourceDoc = XDocument.Load(sourceCsprojPath);
     XDocument destinationDoc = XDocument.Load(destinationCsprojPath);
 
-    // Get the default namespace (if any)
-    XNamespace sourceNs = sourceDoc.Root?.GetDefaultNamespace() ?? XNamespace.None;
-    XNamespace destNs = destinationDoc.Root?.GetDefaultNamespace() ?? XNamespace.None;
+    XNamespace ns = sourceDoc.Root.GetDefaultNamespace(); // Capture the source namespace
 
-    var sourceImports = sourceDoc.Descendants(sourceNs + "Import");
-    var sourcePackageReferences = sourceDoc.Descendants(sourceNs + "PackageReference");
-    var sourceProjectReferences = sourceDoc.Descendants(sourceNs + "ProjectReference");
+    var sourceImports = sourceDoc.Descendants(ns + "Import");
+    var sourcePackageReferences = sourceDoc.Descendants(ns + "PackageReference");
+    var sourceProjectReferences = sourceDoc.Descendants(ns + "ProjectReference");
 
-    XElement destinationProject = destinationDoc.Element(destNs + "Project");
-    var destinationItemGroups = destinationProject.Elements(destNs + "ItemGroup").ToList();
+    XElement destinationProject = destinationDoc.Element("Project");
 
     // Merge Import elements
     foreach (var import in sourceImports)
     {
-        var existingImport = destinationProject.Elements(destNs + "Import")
+        var newImport = new XElement(import.Name.LocalName, import.Attributes()); // Remove namespace
+        var existingImport = destinationProject.Elements("Import")
             .FirstOrDefault(e => e.Attribute("Project")?.Value == import.Attribute("Project")?.Value);
         if (existingImport != null)
         {
-            existingImport.ReplaceWith(new XElement(import));
+            existingImport.ReplaceWith(newImport);
         }
         else
         {
-            destinationProject.Add(new XElement(import));
+            destinationProject.Add(newImport);
         }
     }
 
     // Merge PackageReference elements
-    XElement packageReferenceGroup = destinationItemGroups.FirstOrDefault(ig => ig.Elements(destNs + "PackageReference").Any());
+    var destinationItemGroups = destinationProject.Elements("ItemGroup").ToList();
+    XElement packageReferenceGroup = destinationItemGroups.FirstOrDefault(ig => ig.Elements("PackageReference").Any());
 
     if (packageReferenceGroup == null)
     {
-        packageReferenceGroup = new XElement(destNs + "ItemGroup");
+        packageReferenceGroup = new XElement("ItemGroup");
         destinationProject.Add(packageReferenceGroup);
     }
 
     foreach (var packageReference in sourcePackageReferences)
     {
-        var existingPackageReference = packageReferenceGroup.Elements(destNs + "PackageReference")
+        var newPackageReference = new XElement(packageReference.Name.LocalName, packageReference.Attributes());
+        var existingPackageReference = packageReferenceGroup.Elements("PackageReference")
             .FirstOrDefault(e => e.Attribute("Include")?.Value == packageReference.Attribute("Include")?.Value);
         if (existingPackageReference != null)
         {
-            existingPackageReference.ReplaceWith(new XElement(packageReference));
+            existingPackageReference.ReplaceWith(newPackageReference);
         }
         else
         {
-            packageReferenceGroup.Add(new XElement(packageReference));
+            packageReferenceGroup.Add(newPackageReference);
         }
     }
 
     // Merge ProjectReference elements
-    XElement projectReferenceGroup = destinationItemGroups.FirstOrDefault(ig => ig.Elements(destNs + "ProjectReference").Any());
+    XElement projectReferenceGroup = destinationItemGroups.FirstOrDefault(ig => ig.Elements("ProjectReference").Any());
 
     if (projectReferenceGroup == null)
     {
-        projectReferenceGroup = new XElement(destNs + "ItemGroup");
+        projectReferenceGroup = new XElement("ItemGroup");
         destinationProject.Add(projectReferenceGroup);
     }
 
     foreach (var projectReference in sourceProjectReferences)
     {
         LogInfo($"Copying {projectReference}");
-        var existingProjectReference = projectReferenceGroup.Elements(destNs + "ProjectReference")
+        var newProjectReference = new XElement(projectReference.Name.LocalName, projectReference.Attributes());
+        var existingProjectReference = projectReferenceGroup.Elements("ProjectReference")
             .FirstOrDefault(e => e.Attribute("Include")?.Value == projectReference.Attribute("Include")?.Value);
         if (existingProjectReference != null)
         {
-            existingProjectReference.ReplaceWith(new XElement(projectReference));
+            existingProjectReference.ReplaceWith(newProjectReference);
         }
         else
         {
-            projectReferenceGroup.Add(new XElement(projectReference));
+            projectReferenceGroup.Add(newProjectReference);
         }
     }
 
     destinationDoc.Save(destinationCsprojPath);
     LogInfo($"Merged {sourceCsprojPath} into {destinationCsprojPath}");
 }
+
 
 public class ScriptExe
 {
