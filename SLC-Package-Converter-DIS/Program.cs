@@ -246,6 +246,7 @@ void MergeCsprojFiles(string sourceCsprojPath, string destinationCsprojPath)
     var sourceImports = sourceDoc.Descendants(ns + "Import");
     var sourcePackageReferences = sourceDoc.Descendants(ns + "PackageReference");
     var sourceProjectReferences = sourceDoc.Descendants(ns + "ProjectReference");
+    var sourceReferences = sourceDoc.Descendants(ns + "Reference");
 
     XElement destinationProject = destinationDoc.Element("Project");
 
@@ -315,9 +316,33 @@ void MergeCsprojFiles(string sourceCsprojPath, string destinationCsprojPath)
         }
     }
 
+    // Merge Reference elements
+    XElement referenceGroup = destinationItemGroups.FirstOrDefault(ig => ig.Elements("Reference").Any());
+    if (referenceGroup == null)
+    {
+        referenceGroup = new XElement("ItemGroup");
+        destinationProject.Add(referenceGroup);
+    }
+
+    foreach (var reference in sourceReferences)
+    {
+        var newReference = new XElement(reference.Name.LocalName, reference.Attributes());
+        var existingReference = referenceGroup.Elements("Reference")
+            .FirstOrDefault(e => e.Attribute("Include")?.Value == reference.Attribute("Include")?.Value);
+        if (existingReference != null)
+        {
+            existingReference.ReplaceWith(newReference);
+        }
+        else
+        {
+            referenceGroup.Add(newReference);
+        }
+    }
+
     destinationDoc.Save(destinationCsprojPath);
     LogInfo($"Merged {sourceCsprojPath} into {destinationCsprojPath}");
 }
+
 
 
 public class ScriptExe
