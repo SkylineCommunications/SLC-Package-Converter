@@ -243,26 +243,29 @@ void MergeCsprojFiles(string sourceCsprojPath, string destinationCsprojPath)
 
     XNamespace ns = sourceDoc.Root.GetDefaultNamespace(); // Capture the source namespace
 
-    var sourceImports = sourceDoc.Descendants(ns + "Import");
+    var sourceImports = sourceDoc.Descendants(ns + "Import")
+        .Where(e => e.Attribute("Project")?.Value != "$(MSBuildToolsPath)\\Microsoft.CSharp.targets"); // Exclude unwanted Import
     var sourcePackageReferences = sourceDoc.Descendants(ns + "PackageReference");
     var sourceProjectReferences = sourceDoc.Descendants(ns + "ProjectReference");
     var sourceReferences = sourceDoc.Descendants(ns + "Reference");
 
     XElement destinationProject = destinationDoc.Element("Project");
 
+    XElement lastItemGroup = destinationProject.Elements("ItemGroup").LastOrDefault();
+    lastItemGroup?.Remove();
+
     // Merge Import elements
     foreach (var import in sourceImports)
     {
-        var newImport = new XElement(import.Name.LocalName, import.Attributes()); // Remove namespace
         var existingImport = destinationProject.Elements("Import")
             .FirstOrDefault(e => e.Attribute("Project")?.Value == import.Attribute("Project")?.Value);
         if (existingImport != null)
         {
-            existingImport.ReplaceWith(newImport);
+            existingImport.ReplaceWith(new XElement(import));
         }
         else
         {
-            destinationProject.Add(newImport);
+            destinationProject.Add(new XElement(import));
         }
     }
 
@@ -278,16 +281,15 @@ void MergeCsprojFiles(string sourceCsprojPath, string destinationCsprojPath)
 
     foreach (var packageReference in sourcePackageReferences)
     {
-        var newPackageReference = new XElement(packageReference.Name.LocalName, packageReference.Attributes());
         var existingPackageReference = packageReferenceGroup.Elements("PackageReference")
             .FirstOrDefault(e => e.Attribute("Include")?.Value == packageReference.Attribute("Include")?.Value);
         if (existingPackageReference != null)
         {
-            existingPackageReference.ReplaceWith(newPackageReference);
+            existingPackageReference.ReplaceWith(new XElement(packageReference));
         }
         else
         {
-            packageReferenceGroup.Add(newPackageReference);
+            packageReferenceGroup.Add(new XElement(packageReference));
         }
     }
 
@@ -302,17 +304,15 @@ void MergeCsprojFiles(string sourceCsprojPath, string destinationCsprojPath)
 
     foreach (var projectReference in sourceProjectReferences)
     {
-        LogInfo($"Copying {projectReference}");
-        var newProjectReference = new XElement(projectReference.Name.LocalName, projectReference.Attributes());
         var existingProjectReference = projectReferenceGroup.Elements("ProjectReference")
             .FirstOrDefault(e => e.Attribute("Include")?.Value == projectReference.Attribute("Include")?.Value);
         if (existingProjectReference != null)
         {
-            existingProjectReference.ReplaceWith(newProjectReference);
+            existingProjectReference.ReplaceWith(new XElement(projectReference));
         }
         else
         {
-            projectReferenceGroup.Add(newProjectReference);
+            projectReferenceGroup.Add(new XElement(projectReference));
         }
     }
 
@@ -326,23 +326,24 @@ void MergeCsprojFiles(string sourceCsprojPath, string destinationCsprojPath)
 
     foreach (var reference in sourceReferences)
     {
-        var newReference = new XElement(reference.Name.LocalName, reference.Attributes());
         var existingReference = referenceGroup.Elements("Reference")
             .FirstOrDefault(e => e.Attribute("Include")?.Value == reference.Attribute("Include")?.Value);
         if (existingReference != null)
         {
-            existingReference.ReplaceWith(newReference);
+            existingReference.ReplaceWith(new XElement(reference));
         }
         else
         {
-            referenceGroup.Add(newReference);
+            referenceGroup.Add(new XElement(reference));
         }
     }
 
     destinationDoc.Save(destinationCsprojPath);
+    string xmlContent = File.ReadAllText(destinationCsprojPath);
+    xmlContent = Regex.Replace(xmlContent, @"\sxmlns=""[^""]+""", ""); // Remove xmlns attribute
+    File.WriteAllText(destinationCsprojPath, xmlContent);
     LogInfo($"Merged {sourceCsprojPath} into {destinationCsprojPath}");
 }
-
 
 
 public class ScriptExe
