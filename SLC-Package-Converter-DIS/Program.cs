@@ -7,6 +7,7 @@ using System.Xml.Linq;
 const string SourceDirectory = @"C:\GIT\SLC-AS-MediaOps";
 const string DestinationDirectory = @"C:\GIT\SLC-MediaOps";
 string[] ExcludedDirs = { "CompanionFiles", "Internal", "Documentation", "Dlls" };
+string[] ExcludedSubDirs = { };//{ "bin", "obj" };
 XNamespace Ns = "http://www.skyline.be/automation";
 
 try
@@ -124,7 +125,6 @@ void CopyOtherDirectories()
         {
             continue;
         }
-
         string destinationDirPath = Path.Combine(DestinationDirectory, dir.Name);
         DirectoryCopy(dir.FullName, destinationDirPath, true);
 
@@ -163,11 +163,16 @@ void DirectoryCopy(string sourceDirName, string destDirName, bool copySubDirs)
     {
         foreach (DirectoryInfo subdir in dirs)
         {
+            if (ExcludedSubDirs.Contains(subdir.Name, StringComparer.OrdinalIgnoreCase))
+            {
+                continue;
+            }
             string tempPath = Path.Combine(destDirName, subdir.Name);
             DirectoryCopy(subdir.FullName, tempPath, copySubDirs);
         }
     }
 }
+
 void LogInfo(string message)
 {
     Console.WriteLine($"INFO: {message}");
@@ -283,14 +288,7 @@ void MergeCsprojFiles(string sourceCsprojPath, string destinationCsprojPath)
     {
         var existingPackageReference = packageReferenceGroup.Elements("PackageReference")
             .FirstOrDefault(e => e.Attribute("Include")?.Value == packageReference.Attribute("Include")?.Value);
-        if (existingPackageReference != null)
-        {
-            existingPackageReference.ReplaceWith(new XElement(packageReference));
-        }
-        else
-        {
-            packageReferenceGroup.Add(new XElement(packageReference));
-        }
+        packageReferenceGroup.Add(new XElement(packageReference));
     }
 
     // Merge ProjectReference elements
@@ -338,12 +336,36 @@ void MergeCsprojFiles(string sourceCsprojPath, string destinationCsprojPath)
         }
     }
 
+    // Ensure <GenerateAssemblyInfo>false</GenerateAssemblyInfo> exists
+    XElement propertyGroup = destinationProject.Elements("PropertyGroup")
+        .FirstOrDefault(pg => pg.Element("GenerateAssemblyInfo") != null);
+
+    if (propertyGroup == null)
+    {
+        propertyGroup = new XElement("PropertyGroup",
+            new XElement("GenerateAssemblyInfo", "false"));
+        destinationProject.AddFirst(propertyGroup);
+    }
+    else
+    {
+        XElement generateAssemblyInfo = propertyGroup.Element("GenerateAssemblyInfo");
+        if (generateAssemblyInfo == null)
+        {
+            propertyGroup.Add(new XElement("GenerateAssemblyInfo", "false"));
+        }
+        else
+        {
+            generateAssemblyInfo.Value = "false";
+        }
+    }
+
     destinationDoc.Save(destinationCsprojPath);
     string xmlContent = File.ReadAllText(destinationCsprojPath);
     xmlContent = Regex.Replace(xmlContent, @"\sxmlns=""[^""]+""", ""); // Remove xmlns attribute
     File.WriteAllText(destinationCsprojPath, xmlContent);
-    LogInfo($"Merged {sourceCsprojPath} into {destinationCsprojPath}");
+    LogInfo($"Merged {sourceCsprojPath} into {destinationCsprojPath} and ensured <GenerateAssemblyInfo>false</GenerateAssemblyInfo>");
 }
+
 
 
 public class ScriptExe
