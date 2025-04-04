@@ -9,6 +9,7 @@ const string SourceDirectory = @"C:\GIT\SLC-AS-MediaOps";
 const string DestinationDirectory = @"C:\GIT\SLC-MediaOps";
 string[] ExcludedDirs = { "CompanionFiles", "Internal", "Documentation", "Dlls" };
 string[] ExcludedSubDirs = { };
+string[] ExcludedFiles = { "AssemblyInfo.cs" };
 XNamespace Ns = "http://www.skyline.be/automation";
 
 try
@@ -196,7 +197,8 @@ void DirectoryCopy(string sourceDirName, string destDirName, bool copySubDirs)
         foreach (FileInfo file in files)
         {
             if (file.Extension.Equals(".xml", StringComparison.OrdinalIgnoreCase) ||
-                file.Extension.Equals(".csproj", StringComparison.OrdinalIgnoreCase))
+                file.Extension.Equals(".csproj", StringComparison.OrdinalIgnoreCase) ||
+                ExcludedFiles.Contains(file.Name, StringComparer.OrdinalIgnoreCase))
             {
                 continue;
             }
@@ -403,29 +405,6 @@ void MergeCsprojFiles(string sourceCsprojPath, string destinationCsprojPath)
             else
             {
                 referenceGroup.Add(new XElement(reference));
-            }
-        }
-
-        // Ensure <GenerateAssemblyInfo>false</GenerateAssemblyInfo> exists
-        XElement propertyGroup = destinationProject.Elements("PropertyGroup")
-            .FirstOrDefault(pg => pg.Element("GenerateAssemblyInfo") != null);
-
-        if (propertyGroup == null)
-        {
-            propertyGroup = new XElement("PropertyGroup",
-                new XElement("GenerateAssemblyInfo", "false"));
-            destinationProject.AddFirst(propertyGroup);
-        }
-        else
-        {
-            XElement generateAssemblyInfo = propertyGroup.Element("GenerateAssemblyInfo");
-            if (generateAssemblyInfo == null)
-            {
-                propertyGroup.Add(new XElement("GenerateAssemblyInfo", "false"));
-            }
-            else
-            {
-                generateAssemblyInfo.Value = "false";
             }
         }
 
