@@ -3,8 +3,6 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.13.35825.156
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SLC-Package-Converter", "SLC-Package-Converter\SLC-Package-Converter.csproj", "{FB899560-5F9D-4DA6-A326-0C4B84949CF3}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SLC-Package-Converter-DIS", "SLC-Package-Converter-DIS\SLC-Package-Converter-DIS.csproj", "{FFEB16E1-C1B2-4199-8C93-08C471AF3B1D}"
 EndProject
 Global
@@ -13,10 +11,6 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{FB899560-5F9D-4DA6-A326-0C4B84949CF3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{FB899560-5F9D-4DA6-A326-0C4B84949CF3}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{FB899560-5F9D-4DA6-A326-0C4B84949CF3}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{FB899560-5F9D-4DA6-A326-0C4B84949CF3}.Release|Any CPU.Build.0 = Release|Any CPU
 		{FFEB16E1-C1B2-4199-8C93-08C471AF3B1D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{FFEB16E1-C1B2-4199-8C93-08C471AF3B1D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{FFEB16E1-C1B2-4199-8C93-08C471AF3B1D}.Release|Any CPU.ActiveCfg = Release|Any CPU
