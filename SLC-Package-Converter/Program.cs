@@ -1,12 +1,10 @@
-﻿using System;
-using System.IO;
-using System.Linq;
-using System.Text.RegularExpressions;
+﻿using System.Text.RegularExpressions;
 using System.Xml;
 using System.Xml.Linq;
 
-const string SourceDirectory = @"C:\GIT\SLC-AS-MediaOps";
-const string DestinationDirectory = @"C:\GIT\SLC-MediaOps";
+// Define constants and variables
+const string SourceDirectory = @"SOURCE_DIRECTORY";
+const string DestinationDirectory = @"DESTINATION_DIRECTORY";
 string[] ExcludedDirs = { "CompanionFiles", "Internal", "Documentation", "Dlls" };
 string[] ExcludedSubDirs = { };
 string[] ExcludedFiles = { "AssemblyInfo.cs" };
@@ -16,15 +14,19 @@ try
 {
     LogInfo("Starting the package conversion process.");
 
-    string slnFile = GetSolutionFile(DestinationDirectory);
+    // Retrieve the solution file from the destination directory
+    string? slnFile = GetSolutionFile(DestinationDirectory);
 
+    // Check if the source directory exists
     if (Directory.Exists(SourceDirectory))
     {
+        // Process XML files and copy other directories
         ProcessXmlFiles(slnFile);
         CopyOtherDirectories();
     }
     else
     {
+        // Log an error if the source directory does not exist
         LogError("Source directory does not exist.");
     }
 }
@@ -46,10 +48,11 @@ catch (Exception ex)
 }
 
 // Retrieves the solution file from the specified directory.
-string GetSolutionFile(string directory)
+string? GetSolutionFile(string directory)
 {
     try
     {
+        // Get the first .sln file in the directory
         string[] slnFiles = Directory.GetFiles(directory, "*.sln", SearchOption.TopDirectoryOnly);
         return slnFiles.FirstOrDefault();
     }
@@ -61,27 +64,33 @@ string GetSolutionFile(string directory)
 }
 
 // Processes XML files in the source directory.
-void ProcessXmlFiles(string slnFile)
+void ProcessXmlFiles(string? slnFile)
 {
     try
     {
+        // Get all XML files in the source directory
         string[] xmlFiles = Directory.GetFiles(SourceDirectory, "*.xml", SearchOption.TopDirectoryOnly);
         foreach (string file in xmlFiles)
         {
             try
             {
+                // Load the XML document
                 XDocument doc = XDocument.Load(file);
                 var exeElements = doc.Descendants(Ns + "Exe");
+
+                // Skip files with multiple Exe elements
                 if (exeElements.Count() > 1)
                 {
                     LogWarning($"Multiple Exe elements found in {file}. Skipping the file.");
                     continue;
                 }
+
                 foreach (var exe in exeElements)
                 {
                     var projectValue = exe.Element(Ns + "Value")?.Value;
                     if (projectValue != null && projectValue.Contains("[Project:"))
                     {
+                        // Extract the project name from the project value
                         string projectName = ExtractProjectName(projectValue);
 
                         // Create the ScriptExe object from the XML element
@@ -90,11 +99,8 @@ void ProcessXmlFiles(string slnFile)
                         // Determine the template name based on the precompile flag
                         string templateName = scriptExe.IsPrecompile ? "dataminer-automation-library-project" : "dataminer-automation-project";
 
-                        // Placeholder for authentication value
-                        string auth = "Mauro Druwel";
-
                         // Run dotnet commands to create the project
-                        ExecuteDotnetCommands(templateName, Path.Combine(DestinationDirectory, projectName), slnFile, auth);
+                        ExecuteDotnetCommands(templateName, Path.Combine(DestinationDirectory, projectName), slnFile);
 
                         // Remove the projectName.xml and projectName.cs files
                         string projectDirectory = Path.Combine(DestinationDirectory, projectName);
@@ -111,8 +117,11 @@ void ProcessXmlFiles(string slnFile)
                             File.Delete(csFilePath);
                         }
 
+                        // Write the XML content to the destination directory
                         File.WriteAllText(Path.Combine(projectDirectory, $"{projectName}.xml"), File.ReadAllText(file));
-                        MergeCsprojFiles(Path.Combine(Path.Combine(Path.GetDirectoryName(file), projectName), $"{projectName}.csproj"), Path.Combine(projectDirectory, $"{projectName}.csproj"));
+
+                        // Merge the .csproj files
+                        MergeCsprojFiles(Path.Combine(Path.Combine(Path.GetDirectoryName(file)!, projectName), $"{projectName}.csproj"), Path.Combine(projectDirectory, $"{projectName}.csproj"));
                     }
                 }
             }
@@ -138,6 +147,7 @@ string ExtractProjectName(string projectValue)
 {
     try
     {
+        // Extract the project name from the project value string
         int startIndex = projectValue.IndexOf("[Project:") + "[Project:".Length;
         int endIndex = projectValue.IndexOf("]", startIndex);
         return projectValue.Substring(startIndex, endIndex - startIndex);
@@ -158,12 +168,15 @@ void CopyOtherDirectories()
 
         foreach (DirectoryInfo dir in sourceDirInfo.GetDirectories())
         {
+            // Skip excluded directories and hidden directories
             if (ExcludedDirs.Contains(dir.Name, StringComparer.OrdinalIgnoreCase) ||
                 (dir.Attributes & FileAttributes.Hidden) == FileAttributes.Hidden ||
                 dir.Name.StartsWith("."))
             {
                 continue;
             }
+
+            // Copy the directory to the destination
             string destinationDirPath = Path.Combine(DestinationDirectory, dir.Name);
             DirectoryCopy(dir.FullName, destinationDirPath, true);
         }
@@ -183,19 +196,23 @@ void DirectoryCopy(string sourceDirName, string destDirName, bool copySubDirs)
         DirectoryInfo dir = new DirectoryInfo(sourceDirName);
         DirectoryInfo[] dirs = dir.GetDirectories();
 
+        // Check if the source directory exists
         if (!dir.Exists)
         {
             throw new DirectoryNotFoundException($"Source directory does not exist or could not be found: {sourceDirName}");
         }
 
+        // Create the destination directory if it does not exist
         if (!Directory.Exists(destDirName))
         {
             Directory.CreateDirectory(destDirName);
         }
 
+        // Copy files to the destination directory
         FileInfo[] files = dir.GetFiles();
         foreach (FileInfo file in files)
         {
+            // Skip excluded files and specific file types
             if (file.Extension.Equals(".xml", StringComparison.OrdinalIgnoreCase) ||
                 file.Extension.Equals(".csproj", StringComparison.OrdinalIgnoreCase) ||
                 ExcludedFiles.Contains(file.Name, StringComparer.OrdinalIgnoreCase))
@@ -207,6 +224,7 @@ void DirectoryCopy(string sourceDirName, string destDirName, bool copySubDirs)
             file.CopyTo(tempPath, false);
         }
 
+        // Copy subdirectories if specified
         if (copySubDirs)
         {
             foreach (DirectoryInfo subdir in dirs)
@@ -246,12 +264,12 @@ void LogError(string message)
 }
 
 // Executes dotnet commands to create and add a project to the solution.
-void ExecuteDotnetCommands(string templateName, string projectName, string slnFile, string auth)
+void ExecuteDotnetCommands(string templateName, string projectName, string? slnFile)
 {
     try
     {
-        // Run the dotnet new command
-        string createProjectCommand = $"dotnet new {templateName} -o \"{projectName}\" -auth \"{auth}\" --force";
+        // Run the dotnet new command to create a new project
+        string createProjectCommand = $"dotnet new {templateName} -o \"{projectName}\" -auth \"\" --force";
         ExecuteCommand(createProjectCommand);
 
         // Run the dotnet sln command to add the project to the solution
@@ -282,6 +300,12 @@ void ExecuteCommand(string command)
 
         using (var process = System.Diagnostics.Process.Start(processStartInfo))
         {
+            if (process == null)
+            {
+                LogError($"Failed to start process for command '{command}'");
+                return;
+            }
+
             using (var reader = process.StandardOutput)
             {
                 string output = reader.ReadToEnd();
@@ -315,20 +339,23 @@ void MergeCsprojFiles(string sourceCsprojPath, string destinationCsprojPath)
 {
     try
     {
+        // Load the source and destination .csproj files
         XDocument sourceDoc = XDocument.Load(sourceCsprojPath);
         XDocument destinationDoc = XDocument.Load(destinationCsprojPath);
 
-        XNamespace ns = sourceDoc.Root.GetDefaultNamespace(); // Capture the source namespace
+        XNamespace ns = sourceDoc.Root!.GetDefaultNamespace(); // Capture the source namespace
 
+        // Get elements from the source .csproj file
         var sourceImports = sourceDoc.Descendants(ns + "Import")
             .Where(e => e.Attribute("Project")?.Value != "$(MSBuildToolsPath)\\Microsoft.CSharp.targets"); // Exclude unwanted Import
         var sourcePackageReferences = sourceDoc.Descendants(ns + "PackageReference");
         var sourceProjectReferences = sourceDoc.Descendants(ns + "ProjectReference");
         var sourceReferences = sourceDoc.Descendants(ns + "Reference");
 
-        XElement destinationProject = destinationDoc.Element("Project");
+        XElement destinationProject = destinationDoc.Element("Project")!;
 
-        XElement lastItemGroup = destinationProject.Elements("ItemGroup").LastOrDefault();
+        // Remove the last ItemGroup element from the destination .csproj file
+        XElement? lastItemGroup = destinationProject.Elements("ItemGroup").LastOrDefault();
         lastItemGroup?.Remove();
 
         // Merge Import elements
@@ -348,7 +375,7 @@ void MergeCsprojFiles(string sourceCsprojPath, string destinationCsprojPath)
 
         // Merge PackageReference elements
         var destinationItemGroups = destinationProject.Elements("ItemGroup").ToList();
-        XElement packageReferenceGroup = destinationItemGroups.FirstOrDefault(ig => ig.Elements("PackageReference").Any());
+        XElement? packageReferenceGroup = destinationItemGroups.FirstOrDefault(ig => ig.Elements("PackageReference").Any());
 
         if (packageReferenceGroup == null)
         {
@@ -364,7 +391,7 @@ void MergeCsprojFiles(string sourceCsprojPath, string destinationCsprojPath)
         }
 
         // Merge ProjectReference elements
-        XElement projectReferenceGroup = destinationItemGroups.FirstOrDefault(ig => ig.Elements("ProjectReference").Any());
+        XElement? projectReferenceGroup = destinationItemGroups.FirstOrDefault(ig => ig.Elements("ProjectReference").Any());
 
         if (projectReferenceGroup == null)
         {
@@ -387,7 +414,7 @@ void MergeCsprojFiles(string sourceCsprojPath, string destinationCsprojPath)
         }
 
         // Merge Reference elements
-        XElement referenceGroup = destinationItemGroups.FirstOrDefault(ig => ig.Elements("Reference").Any());
+        XElement? referenceGroup = destinationItemGroups.FirstOrDefault(ig => ig.Elements("Reference").Any());
         if (referenceGroup == null)
         {
             referenceGroup = new XElement("ItemGroup");
@@ -408,11 +435,13 @@ void MergeCsprojFiles(string sourceCsprojPath, string destinationCsprojPath)
             }
         }
 
+        // Save the merged .csproj file
         destinationDoc.Save(destinationCsprojPath);
+
+        // Remove xmlns attribute from the saved .csproj file
         string xmlContent = File.ReadAllText(destinationCsprojPath);
         xmlContent = Regex.Replace(xmlContent, @"\sxmlns=""[^""]+""", ""); // Remove xmlns attribute
         File.WriteAllText(destinationCsprojPath, xmlContent);
-        // LogInfo($"Merged {sourceCsprojPath} into {destinationCsprojPath} and ensured <GenerateAssemblyInfo>false</GenerateAssemblyInfo>");
     }
     catch (Exception ex)
     {
@@ -421,22 +450,21 @@ void MergeCsprojFiles(string sourceCsprojPath, string destinationCsprojPath)
     }
 }
 
-// Represents a ScriptExe object.
+// Represents a ScriptExe object. (Automation Script XML)
 public class ScriptExe
 {
-    public string Type { get; set; }
+    public string? Type { get; set; }
     public bool IsPrecompile { get; set; }
-    public string LibraryName { get; set; }
+    public string? LibraryName { get; set; }
 
     // Initializes a new instance of the ScriptExe class from an XML element.
     public ScriptExe(XElement exeElement)
     {
-
+        // Extract properties from the XML element
         Type = exeElement.Element("Param")?.Attribute("type")?.Value;
         IsPrecompile = exeElement.Descendants("Param")
                                   .Any(p => p.Attribute("type")?.Value == "preCompile" && p.Value == "true");
         LibraryName = exeElement.Descendants("Param")
                                 .FirstOrDefault(p => p.Attribute("type")?.Value == "libraryName")?.Value;
-
     }
 }
