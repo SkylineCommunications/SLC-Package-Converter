@@ -1,10 +1,11 @@
-﻿using System.Text.RegularExpressions;
+﻿using System.Reflection.Metadata.Ecma335;
+using System.Text.RegularExpressions;
 using System.Xml;
 using System.Xml.Linq;
 
 // Define constants and variables
-const string SourceDirectory = @"SOURCE_DIRECTORY";
-const string DestinationDirectory = @"DESTINATION_DIRECTORY";
+const string SourceDirectory = @"C:\GIT\SLC-AS-MediaOps";
+const string DestinationDirectory = @"";
 string[] ExcludedDirs = { "CompanionFiles", "Internal", "Documentation", "Dlls" };
 string[] ExcludedSubDirs = { };
 string[] ExcludedFiles = { "AssemblyInfo.cs" };
@@ -14,14 +15,11 @@ try
 {
     LogInfo("Starting the package conversion process.");
 
-    // Retrieve the solution file from the destination directory
-    string? slnFile = GetSolutionFile(DestinationDirectory);
-
     // Check if the source directory exists
     if (Directory.Exists(SourceDirectory))
     {
         // Process XML files and copy other directories
-        ProcessXmlFiles(slnFile);
+        ProcessXmlFiles(DestinationDirectory);
         CopyOtherDirectories();
     }
     else
@@ -64,74 +62,154 @@ string? GetSolutionFile(string directory)
 }
 
 // Processes XML files in the source directory.
-void ProcessXmlFiles(string? slnFile)
+void ProcessXmlFiles(string DestinationDirectory)
 {
     try
     {
         // Get all XML files in the source directory
         string[] xmlFiles = Directory.GetFiles(SourceDirectory, "*.xml", SearchOption.TopDirectoryOnly);
-        foreach (string file in xmlFiles)
+        if (DestinationDirectory != string.Empty)
         {
-            try
+            string? slnFile = GetSolutionFile(DestinationDirectory);
+            if (xmlFiles.Length == 1)
             {
-                // Load the XML document
-                XDocument doc = XDocument.Load(file);
-                var exeElements = doc.Descendants(Ns + "Exe");
-
-                // Skip files with multiple Exe elements
-                if (exeElements.Count() > 1)
+                LogWarning($"Single XML file detected, are you sure you want this in a package project? Continuing...");
+            }
+            foreach (string file in xmlFiles)
+            {
+                try
                 {
-                    LogWarning($"Multiple Exe elements found in {file}. Skipping the file.");
-                    continue;
-                }
+                    // Load the XML document
+                    XDocument doc = XDocument.Load(file);
+                    var exeElements = doc.Descendants(Ns + "Exe");
 
-                foreach (var exe in exeElements)
-                {
-                    var projectValue = exe.Element(Ns + "Value")?.Value;
-                    if (projectValue != null && projectValue.Contains("[Project:"))
+                    // Skip files with multiple Exe elements
+                    if (exeElements.Count() > 1)
                     {
-                        // Extract the project name from the project value
-                        string projectName = ExtractProjectName(projectValue);
+                        LogWarning($"Multiple Exe elements found in {file}. Skipping the file.");
+                        continue;
+                    }
 
-                        // Create the ScriptExe object from the XML element
-                        ScriptExe scriptExe = new ScriptExe(exe);
-
-                        // Determine the template name based on the precompile flag
-                        string templateName = scriptExe.IsPrecompile ? "dataminer-automation-library-project" : "dataminer-automation-project";
-
-                        // Run dotnet commands to create the project
-                        ExecuteDotnetCommands(templateName, Path.Combine(DestinationDirectory, projectName), slnFile);
-
-                        // Remove the projectName.xml and projectName.cs files
-                        string projectDirectory = Path.Combine(DestinationDirectory, projectName);
-                        string xmlFilePath = Path.Combine(projectDirectory, $"{projectName}.xml");
-                        string csFilePath = Path.Combine(projectDirectory, $"{projectName}.cs");
-
-                        if (File.Exists(xmlFilePath))
+                    foreach (var exe in exeElements)
+                    {
+                        var projectValue = exe.Element(Ns + "Value")?.Value;
+                        if (projectValue != null && projectValue.Contains("[Project:"))
                         {
-                            File.Delete(xmlFilePath);
+                            // Extract the project name from the project value
+                            string projectName = ExtractProjectName(projectValue);
+
+                            // Create the ScriptExe object from the XML element
+                            ScriptExe scriptExe = new ScriptExe(exe);
+
+                            // Determine the template name based on the precompile flag
+                            string templateName = scriptExe.IsPrecompile ? "dataminer-automation-library-project" : "dataminer-automation-project";
+
+                            // Run dotnet commands to create the project
+                            ExecuteDotnetCommands(templateName, Path.Combine(DestinationDirectory, projectName), slnFile);
+
+                            // Remove the projectName.xml and projectName.cs files
+                            string projectDirectory = Path.Combine(DestinationDirectory, projectName);
+                            string xmlFilePath = Path.Combine(projectDirectory, $"{projectName}.xml");
+                            string csFilePath = Path.Combine(projectDirectory, $"{projectName}.cs");
+
+                            if (File.Exists(xmlFilePath))
+                            {
+                                File.Delete(xmlFilePath);
+                            }
+
+                            if (File.Exists(csFilePath))
+                            {
+                                File.Delete(csFilePath);
+                            }
+
+                            // Write the XML content to the destination directory
+                            File.WriteAllText(Path.Combine(projectDirectory, $"{projectName}.xml"), File.ReadAllText(file));
+
+                            // Merge the .csproj files
+                            MergeCsprojFiles(Path.Combine(Path.Combine(Path.GetDirectoryName(file)!, projectName), $"{projectName}.csproj"), Path.Combine(projectDirectory, $"{projectName}.csproj"));
                         }
-
-                        if (File.Exists(csFilePath))
-                        {
-                            File.Delete(csFilePath);
-                        }
-
-                        // Write the XML content to the destination directory
-                        File.WriteAllText(Path.Combine(projectDirectory, $"{projectName}.xml"), File.ReadAllText(file));
-
-                        // Merge the .csproj files
-                        MergeCsprojFiles(Path.Combine(Path.Combine(Path.GetDirectoryName(file)!, projectName), $"{projectName}.csproj"), Path.Combine(projectDirectory, $"{projectName}.csproj"));
                     }
                 }
+                catch (XmlException ex)
+                {
+                    LogError($"XML error in file {file}: {ex.Message}");
+                }
+                catch (Exception ex)
+                {
+                    LogError($"Error processing file {file}: {ex.Message}");
+                }
             }
-            catch (XmlException ex)
+        }
+        else
+        {
+            if (xmlFiles.Length != 1)
             {
-                LogError($"XML error in file {file}: {ex.Message}");
+                LogWarning($"Multiple XML files detected, stopping...");
+                throw;
             }
-            catch (Exception ex)
+            foreach (string file in xmlFiles)
             {
-                LogError($"Error processing file {file}: {ex.Message}");
+                try
+                {
+                    // Load the XML document
+                    XDocument doc = XDocument.Load(file);
+                    var exeElements = doc.Descendants(Ns + "Exe");
+
+                    // Skip files with multiple Exe elements
+                    if (exeElements.Count() > 1)
+                    {
+                        LogWarning($"Multiple Exe elements found in {file}. Skipping the file.");
+                        continue;
+                    }
+
+                    foreach (var exe in exeElements)
+                    {
+                        var projectValue = exe.Element(Ns + "Value")?.Value;
+                        if (projectValue != null && projectValue.Contains("[Project:"))
+                        {
+                            // Extract the project name from the project value
+                            string projectName = ExtractProjectName(projectValue);
+
+                            // Create the ScriptExe object from the XML element
+                            ScriptExe scriptExe = new ScriptExe(exe);
+
+                            // Determine the template name based on the precompile flag
+                            string templateName = scriptExe.IsPrecompile ? "dataminer-automation-library-project" : "dataminer-automation-project";
+
+                            // Run dotnet commands to create the project
+                            ExecuteDotnetCommands(templateName, Path.Combine("C:", projectName),"");
+
+                            // Remove the projectName.xml and projectName.cs files
+                            string projectDirectory = Path.Combine(, projectName);
+                            string xmlFilePath = Path.Combine(projectDirectory, $"{projectName}.xml");
+                            string csFilePath = Path.Combine(projectDirectory, $"{projectName}.cs");
+
+                            if (File.Exists(xmlFilePath))
+                            {
+                                File.Delete(xmlFilePath);
+                            }
+
+                            if (File.Exists(csFilePath))
+                            {
+                                File.Delete(csFilePath);
+                            }
+
+                            // Write the XML content to the destination directory
+                            File.WriteAllText(Path.Combine(projectDirectory, $"{projectName}.xml"), File.ReadAllText(file));
+
+                            // Merge the .csproj files
+                            MergeCsprojFiles(Path.Combine(Path.Combine(Path.GetDirectoryName(file)!, projectName), $"{projectName}.csproj"), Path.Combine(projectDirectory, $"{projectName}.csproj"));
+                        }
+                    }
+                }
+                catch (XmlException ex)
+                {
+                    LogError($"XML error in file {file}: {ex.Message}");
+                }
+                catch (Exception ex)
+                {
+                    LogError($"Error processing file {file}: {ex.Message}");
+                }
             }
         }
     }
