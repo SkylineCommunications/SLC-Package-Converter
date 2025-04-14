@@ -3,12 +3,15 @@ using System.Xml;
 using System.Xml.Linq;
 
 // Define constants and variables
-const string SourceDirectory = @"SOURCE_DIRECTORY";
-const string DestinationDirectory = @"DESTINATION_DIRECTORY";
+const string SourceDirectory = @"C:\GIT\SLC-AS-MediaOps";
+const string DestinationDirectory = @"C:\GIT\SLC-MediaOps";
 string[] ExcludedDirs = { "CompanionFiles", "Internal", "Documentation", "Dlls" };
 string[] ExcludedSubDirs = { };
 string[] ExcludedFiles = { "AssemblyInfo.cs" };
 XNamespace Ns = "http://www.skyline.be/automation";
+
+// List to store project names
+List<string> ProjectNames = new List<string>();
 
 try
 {
@@ -85,6 +88,14 @@ void ProcessXmlFiles(string? slnFile)
                     continue;
                 }
 
+                // Extract the script name from the <Name> element
+                string? scriptName = doc.Root?.Element(Ns + "Name")?.Value;
+                if (string.IsNullOrEmpty(scriptName))
+                {
+                    LogWarning($"No script name found in {file}. Skipping the file.");
+                    continue;
+                }
+
                 foreach (var exe in exeElements)
                 {
                     var projectValue = exe.Element(Ns + "Value")?.Value;
@@ -92,6 +103,14 @@ void ProcessXmlFiles(string? slnFile)
                     {
                         // Extract the project name from the project value
                         string projectName = ExtractProjectName(projectValue);
+                        string newName = Regex.Replace(
+                    projectName,
+                    @"_\d+$", // Matches an underscore followed by one or more digits at the end of the string
+                    string.Empty // Replaces the match with an empty string
+                );
+
+                        // Add projectName to the list
+                        ProjectNames.Add(projectName);
 
                         // Create the ScriptExe object from the XML element
                         ScriptExe scriptExe = new ScriptExe(exe);
@@ -100,12 +119,12 @@ void ProcessXmlFiles(string? slnFile)
                         string templateName = scriptExe.IsPrecompile ? "dataminer-automation-library-project" : "dataminer-automation-project";
 
                         // Run dotnet commands to create the project
-                        ExecuteDotnetCommands(templateName, Path.Combine(DestinationDirectory, projectName), slnFile);
+                        ExecuteDotnetCommands(templateName, Path.Combine(DestinationDirectory, newName), slnFile);
 
-                        // Remove the projectName.xml and projectName.cs files
-                        string projectDirectory = Path.Combine(DestinationDirectory, projectName);
-                        string xmlFilePath = Path.Combine(projectDirectory, $"{projectName}.xml");
-                        string csFilePath = Path.Combine(projectDirectory, $"{projectName}.cs");
+                        // Remove the scriptName.xml and scriptName.cs files
+                        string projectDirectory = Path.Combine(DestinationDirectory, newName);
+                        string xmlFilePath = Path.Combine(projectDirectory, $"{newName}.xml");
+                        string csFilePath = Path.Combine(projectDirectory, $"{newName}.cs");
 
                         if (File.Exists(xmlFilePath))
                         {
@@ -118,10 +137,11 @@ void ProcessXmlFiles(string? slnFile)
                         }
 
                         // Write the XML content to the destination directory
-                        File.WriteAllText(Path.Combine(projectDirectory, $"{projectName}.xml"), File.ReadAllText(file));
+                        File.WriteAllText(Path.Combine(projectDirectory, $"{newName}.xml"), File.ReadAllText(file).Replace($"Project:{projectName}",$"Project:{newName}"));
 
                         // Merge the .csproj files
-                        MergeCsprojFiles(Path.Combine(Path.Combine(Path.GetDirectoryName(file)!, projectName), $"{projectName}.csproj"), Path.Combine(projectDirectory, $"{projectName}.csproj"));
+                        MergeCsprojFiles(Path.Combine(Path.Combine(Path.GetDirectoryName(file)!, projectName), $"{projectName}.csproj"), Path.Combine(projectDirectory, $"{newName}.csproj"));
+
                     }
                 }
             }
@@ -176,8 +196,26 @@ void CopyOtherDirectories()
                 continue;
             }
 
-            // Copy the directory to the destination
-            string destinationDirPath = Path.Combine(DestinationDirectory, dir.Name);
+            string destinationDirPath = "";
+
+            // Check if the folder name ends with ".Tests"
+            if (dir.Name.EndsWith(".Tests", StringComparison.OrdinalIgnoreCase))
+            {
+                // Extract the part before ".Tests", apply the regex, and add ".Tests" back
+                string baseName = dir.Name.Substring(0, dir.Name.Length - ".Tests".Length);
+                string sanitizedBaseName = Regex.Replace(baseName, @"_\d+$", string.Empty);
+                destinationDirPath = Path.Combine(DestinationDirectory, sanitizedBaseName + ".Tests");
+            }
+            else
+            {
+                // Apply the regex directly if the folder name does not end with ".Tests"
+                destinationDirPath = Regex.Replace(
+                    Path.Combine(DestinationDirectory, dir.Name),
+                    @"_\d+$", // Matches an underscore followed by one or more digits at the end of the string
+                    string.Empty // Replaces the match with an empty string
+                );
+            }
+
             DirectoryCopy(dir.FullName, destinationDirPath, true);
         }
     }
@@ -220,7 +258,20 @@ void DirectoryCopy(string sourceDirName, string destDirName, bool copySubDirs)
                 continue;
             }
 
-            string tempPath = Path.Combine(destDirName, file.Name);
+            // Separate the file name and extension
+            string fileNameWithoutExtension = Path.GetFileNameWithoutExtension(file.Name);
+            string fileExtension = file.Extension;
+
+            // Apply the regex to the file name without the extension
+            string sanitizedFileName = Regex.Replace(
+                fileNameWithoutExtension,
+                @"_\d+$", // Matches an underscore followed by one or more digits at the end of the string
+                string.Empty
+            );
+
+            // Recombine the sanitized file name with the original extension
+            string tempPath = Path.Combine(destDirName, sanitizedFileName + fileExtension);
+
             file.CopyTo(tempPath, false);
         }
 
@@ -233,7 +284,9 @@ void DirectoryCopy(string sourceDirName, string destDirName, bool copySubDirs)
                 {
                     continue;
                 }
+
                 string tempPath = Path.Combine(destDirName, subdir.Name);
+
                 DirectoryCopy(subdir.FullName, tempPath, copySubDirs);
             }
         }
@@ -401,6 +454,18 @@ void MergeCsprojFiles(string sourceCsprojPath, string destinationCsprojPath)
 
         foreach (var projectReference in sourceProjectReferences)
         {
+            var includeAttribute = projectReference.Attribute("Include");
+            if (includeAttribute != null)
+            {
+                // Apply regex to remove "_int" from the Include path
+                string updatedInclude = Regex.Replace(
+                    includeAttribute.Value,
+                    @"_\d+", // Matches an underscore followed by one or more digits
+                    string.Empty
+                );
+                includeAttribute.Value = updatedInclude;
+            }
+
             var existingProjectReference = projectReferenceGroup.Elements("ProjectReference")
                 .FirstOrDefault(e => e.Attribute("Include")?.Value == projectReference.Attribute("Include")?.Value);
             if (existingProjectReference != null)
@@ -412,6 +477,9 @@ void MergeCsprojFiles(string sourceCsprojPath, string destinationCsprojPath)
                 projectReferenceGroup.Add(new XElement(projectReference));
             }
         }
+
+
+
 
         // Merge Reference elements
         XElement? referenceGroup = destinationItemGroups.FirstOrDefault(ig => ig.Elements("Reference").Any());
