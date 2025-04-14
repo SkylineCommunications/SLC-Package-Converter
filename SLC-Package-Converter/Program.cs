@@ -23,74 +23,39 @@ try
         var currentSln = GetSolutionFile(SourceDirectory);
         if (currentSln == null)
         {
-            LogError("No solution file found in the source directory.");
             throw new FileNotFoundException("Solution file not found.");
         }
 
         string currentSlnNameWithoutExtension = Path.GetFileNameWithoutExtension(currentSln);
         DestinationDirectory = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
-        LogInfo($"Destination Directory was not specified, this will create a new branch with the new project, temp: {DestinationDirectory}");
+        LogInfo($"Destination Directory not specified. Creating a new branch with the new project.");
         Directory.CreateDirectory(DestinationDirectory);
-        string createProjectCommand = $"cd \"{DestinationDirectory}\" && dotnet new dataminer-package-project -o \"{currentSlnNameWithoutExtension}\" -auth \"\" -cdp true -I Complete --force && dotnet new sln -n \"{currentSlnNameWithoutExtension}\" && dotnet sln add \"{currentSlnNameWithoutExtension}/{currentSlnNameWithoutExtension}.csproj\"";
+
+        string createProjectCommand =
+            $"cd \"{DestinationDirectory}\" && " +
+            $"dotnet new dataminer-package-project -o \"{currentSlnNameWithoutExtension}\" -auth \"\" -cdp true -I Complete --force && " +
+            $"dotnet new sln -n \"{currentSlnNameWithoutExtension}\" && " +
+            $"dotnet sln add \"{currentSlnNameWithoutExtension}/{currentSlnNameWithoutExtension}.csproj\"";
         ExecuteCommand(createProjectCommand);
+
         branchMode = true;
     }
 
     string? slnFile = GetSolutionFile(DestinationDirectory);
-    // Check if the source directory exists
-    if (Directory.Exists(SourceDirectory))
+
+    if (!Directory.Exists(SourceDirectory))
     {
-        // Process XML files and copy other directories
-        ProcessXmlFiles(slnFile);
-        CopyOtherDirectories();
-        if (branchMode)
-        {
-            try
-            {
-                // Navigate to the source directory
-                Directory.SetCurrentDirectory(SourceDirectory);
-
-                // Create a new branch
-                string branchName = $"converted-package";
-                ExecuteCommand($"git checkout --orphan {branchName}");
-                ExecuteCommand("git rm -rf .");
-                ExecuteCommand("git clean -fd");
-
-                // Copy all files and directories from the destination directory to the source directory
-                foreach (string dirPath in Directory.GetDirectories(DestinationDirectory, "*", SearchOption.AllDirectories))
-                {
-                    string targetDirPath = dirPath.Replace(DestinationDirectory, SourceDirectory);
-                    if (!Directory.Exists(targetDirPath))
-                    {
-                        Directory.CreateDirectory(targetDirPath);
-                    }
-                }
-
-                foreach (string filePath in Directory.GetFiles(DestinationDirectory, "*.*", SearchOption.AllDirectories))
-                {
-                    string targetFilePath = filePath.Replace(DestinationDirectory, SourceDirectory);
-                    File.Copy(filePath, targetFilePath, true);
-                }
-
-                // Stage all changes
-                ExecuteCommand("git add .");
-
-                // Commit the changes
-                ExecuteCommand($"git commit -m \"Copied files from destination directory to new branch {branchName}\"");
-
-                LogInfo($"Successfully created branch '{branchName}' and copied files.");
-            }
-            catch (Exception ex)
-            {
-                LogError($"Error creating branch and copying files: {ex.Message}");
-                throw;
-            }
-        }
-    }
-    else
-    {
-        // Log an error if the source directory does not exist
         LogError("Source directory does not exist.");
+        return;
+    }
+
+    // Process XML files and copy other directories
+    ProcessXmlFiles(slnFile);
+    CopyOtherDirectories();
+
+    if (branchMode)
+    {
+        CreateBranchAndCopyFiles();
     }
 }
 catch (DirectoryNotFoundException ex)
@@ -108,6 +73,45 @@ catch (UnauthorizedAccessException ex)
 catch (Exception ex)
 {
     LogError($"An unexpected error occurred: {ex.Message}");
+}
+
+// Creates a new branch and copies files from the destination to the source directory.
+void CreateBranchAndCopyFiles()
+{
+    try
+    {
+        Directory.SetCurrentDirectory(SourceDirectory);
+
+        string branchName = "converted-package";
+        ExecuteCommand($"git checkout --orphan {branchName}");
+        ExecuteCommand("git rm -rf .");
+        ExecuteCommand("git clean -fd");
+
+        foreach (string dirPath in Directory.GetDirectories(DestinationDirectory, "*", SearchOption.AllDirectories))
+        {
+            string targetDirPath = dirPath.Replace(DestinationDirectory, SourceDirectory);
+            if (!Directory.Exists(targetDirPath))
+            {
+                Directory.CreateDirectory(targetDirPath);
+            }
+        }
+
+        foreach (string filePath in Directory.GetFiles(DestinationDirectory, "*.*", SearchOption.AllDirectories))
+        {
+            string targetFilePath = filePath.Replace(DestinationDirectory, SourceDirectory);
+            File.Copy(filePath, targetFilePath, true);
+        }
+
+        ExecuteCommand("git add .");
+        ExecuteCommand($"git commit -m \"Copied files from destination directory to new branch {branchName}\"");
+
+        LogInfo($"Successfully created branch '{branchName}' and copied files.");
+    }
+    catch (Exception ex)
+    {
+        LogError($"Error creating branch and copying files: {ex.Message}");
+        throw;
+    }
 }
 
 // Retrieves the solution file from the specified directory.
