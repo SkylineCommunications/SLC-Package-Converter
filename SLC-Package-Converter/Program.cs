@@ -3,8 +3,8 @@ using System.Xml;
 using System.Xml.Linq;
 
 // Define constants and variables
-const string SourceDirectory = @"C:\GIT\SLC-AS-MediaOps";
-const string DestinationDirectory = @"C:\GIT\SLC-MediaOps";
+const string SourceDirectory = @"SOURCE_DIRECTORY";
+const string DestinationDirectory = @"DESTINATION_DIRECTORY";
 string[] ExcludedDirs = { "CompanionFiles", "Internal", "Documentation", "Dlls" };
 string[] ExcludedSubDirs = { };
 string[] ExcludedFiles = { "AssemblyInfo.cs" };
@@ -104,10 +104,10 @@ void ProcessXmlFiles(string? slnFile)
                         // Extract the project name from the project value
                         string projectName = ExtractProjectName(projectValue);
                         string newName = Regex.Replace(
-                    projectName,
-                    @"_\d+$", // Matches an underscore followed by one or more digits at the end of the string
-                    string.Empty // Replaces the match with an empty string
-                );
+                            projectName,
+                            @"_\d+$", // Matches an underscore followed by one or more digits at the end of the string
+                            string.Empty // Replaces the match with an empty string
+                        );
 
                         // Add projectName to the list
                         ProjectNames.Add(projectName);
