@@ -3,11 +3,12 @@ using System.Xml;
 using System.Xml.Linq;
 
 // Define constants and variables
-const string SourceDirectory = @"SOURCE_DIRECTORY";
-const string DestinationDirectory = @"DESTINATION_DIRECTORY";
+const string SourceDirectory = @"C:\GIT\SLC-AS-MediaOps";
+string DestinationDirectory = @"";
 string[] ExcludedDirs = { "CompanionFiles", "Internal", "Documentation", "Dlls" };
 string[] ExcludedSubDirs = { };
 string[] ExcludedFiles = { "AssemblyInfo.cs" };
+bool branchMode = false;
 XNamespace Ns = "http://www.skyline.be/automation";
 
 // List to store project names
@@ -17,15 +18,74 @@ try
 {
     LogInfo("Starting the package conversion process.");
 
-    // Retrieve the solution file from the destination directory
-    string? slnFile = GetSolutionFile(DestinationDirectory);
+    if (string.IsNullOrEmpty(DestinationDirectory))
+    {
+        var currentSln = GetSolutionFile(SourceDirectory);
+        if (currentSln == null)
+        {
+            LogError("No solution file found in the source directory.");
+            throw new FileNotFoundException("Solution file not found.");
+        }
 
+        string currentSlnNameWithoutExtension = Path.GetFileNameWithoutExtension(currentSln);
+        DestinationDirectory = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+        LogInfo($"Destination Directory was not specified, this will create a new branch with the new project, temp: {DestinationDirectory}");
+        Directory.CreateDirectory(DestinationDirectory);
+        string createProjectCommand = $"cd \"{DestinationDirectory}\" && dotnet new dataminer-package-project -o \"{currentSlnNameWithoutExtension}\" -auth \"\" -cdp true -I Complete --force && dotnet new sln -n \"{currentSlnNameWithoutExtension}\" && dotnet sln add \"{currentSlnNameWithoutExtension}/{currentSlnNameWithoutExtension}.csproj\"";
+        ExecuteCommand(createProjectCommand);
+        branchMode = true;
+    }
+
+    string? slnFile = GetSolutionFile(DestinationDirectory);
     // Check if the source directory exists
     if (Directory.Exists(SourceDirectory))
     {
         // Process XML files and copy other directories
         ProcessXmlFiles(slnFile);
         CopyOtherDirectories();
+        if (branchMode)
+        {
+            try
+            {
+                // Navigate to the source directory
+                Directory.SetCurrentDirectory(SourceDirectory);
+
+                // Create a new branch
+                string branchName = $"converted-package";
+                ExecuteCommand($"git checkout --orphan {branchName}");
+                ExecuteCommand("git rm -rf .");
+                ExecuteCommand("git clean -fd");
+
+                // Copy all files and directories from the destination directory to the source directory
+                foreach (string dirPath in Directory.GetDirectories(DestinationDirectory, "*", SearchOption.AllDirectories))
+                {
+                    string targetDirPath = dirPath.Replace(DestinationDirectory, SourceDirectory);
+                    if (!Directory.Exists(targetDirPath))
+                    {
+                        Directory.CreateDirectory(targetDirPath);
+                    }
+                }
+
+                foreach (string filePath in Directory.GetFiles(DestinationDirectory, "*.*", SearchOption.AllDirectories))
+                {
+                    string targetFilePath = filePath.Replace(DestinationDirectory, SourceDirectory);
+                    File.Copy(filePath, targetFilePath, true);
+                }
+
+                // Stage all changes
+                ExecuteCommand("git add .");
+
+                // Commit the changes
+                ExecuteCommand($"git commit -m \"Copied files from destination directory to new branch {branchName}\"");
+
+                LogInfo($"Successfully created branch '{branchName}' and copied files.");
+            }
+            catch (Exception ex)
+            {
+                LogError($"Error creating branch and copying files: {ex.Message}");
+                throw;
+            }
+        }
     }
     else
     {
@@ -137,7 +197,7 @@ void ProcessXmlFiles(string? slnFile)
                         }
 
                         // Write the XML content to the destination directory
-                        File.WriteAllText(Path.Combine(projectDirectory, $"{newName}.xml"), File.ReadAllText(file).Replace($"Project:{projectName}",$"Project:{newName}"));
+                        File.WriteAllText(Path.Combine(projectDirectory, $"{newName}.xml"), File.ReadAllText(file).Replace($"Project:{projectName}", $"Project:{newName}"));
 
                         // Merge the .csproj files
                         MergeCsprojFiles(Path.Combine(Path.Combine(Path.GetDirectoryName(file)!, projectName), $"{projectName}.csproj"), Path.Combine(projectDirectory, $"{newName}.csproj"));
