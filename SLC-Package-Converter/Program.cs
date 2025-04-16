@@ -7,7 +7,7 @@ const string SourceDirectory = @"C:\GIT\SLC-AS-MediaOps";
 string DestinationDirectory = @"";
 string[] ExcludedDirs = { "CompanionFiles", "Internal", "Documentation", "Dlls" };
 string[] ExcludedSubDirs = { };
-string[] ExcludedFiles = { "AssemblyInfo.cs" };
+string[] ExcludedFiles = { "AssemblyInfo.cs" , "Jenkinsfile" };
 bool branchMode = false;
 XNamespace Ns = "http://www.skyline.be/automation";
 
@@ -249,6 +249,18 @@ void CopyOtherDirectories()
     try
     {
         DirectoryInfo sourceDirInfo = new DirectoryInfo(SourceDirectory);
+        foreach (FileInfo file in sourceDirInfo.GetFiles())
+        {
+            // Skip .xml files  
+            if (file.Extension.Equals(".xml", StringComparison.OrdinalIgnoreCase) || file.Extension.Equals(".sln", StringComparison.OrdinalIgnoreCase) || file.Extension.Equals(".slnf", StringComparison.OrdinalIgnoreCase) || ExcludedFiles.Contains(file.Name, StringComparer.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            // Perform operations on non-.xml files  
+            string destinationFilePath = Path.Combine(DestinationDirectory, file.Name);
+            file.CopyTo(destinationFilePath, false);
+        }
 
         foreach (DirectoryInfo dir in sourceDirInfo.GetDirectories())
         {
