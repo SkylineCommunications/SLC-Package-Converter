@@ -14,7 +14,7 @@
 
 ### 1. Download the Latest Release
 
-Download the latest release of the tool from the **Releases** section of this repository.
+Download the latest release of the tool from the [**Releases**](https://github.com/SkylineCommunications/SLC-Package-Converter/releases/latest) section of this repository.
 
 ### 2. Run the Tool
 
