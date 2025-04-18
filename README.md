@@ -1,60 +1,49 @@
 # 🛠️ SLC-Package-Converter
 
-**SLC-Package-Converter** is a tool that automates the conversion of all your legacy `Microsoft.Net.Sdk`-based or old-build-style Automation Scripts into a modern **DataMiner Package Project** format.
-
+**SLC-Package-Converter** is a tool that automates the conversion of legacy `Microsoft.Net.Sdk`-based or old-build-style Automation Scripts into a modern **DataMiner Package Project** format.
 
 ## ✨ Features
 
-- Parses `.xml` files to extract project metadata.
-- Automatically creates `Skyline.DataMiner.Sdk` projects.
+- Parses all `.xml` files and creates corresponding Automation Script Projects.
+- Automatically adds newly created `Skyline.DataMiner.Sdk` Automation Script Projects to the DataMiner Package Project.
 - Merges `.csproj` files with the correct references and dependencies.
 - Copies necessary files and folders while respecting exclusion rules.
 - Automatically creates a new Git branch (`converted-package`) if no destination is specified.
 
-
 ## 🚀 Usage
 
-### 1. Set Source and Destination Directories
+### 1. Download the Latest Release
 
-Open `Program.cs` and update the paths:
+Download the latest release of the tool from the **Releases** section of this repository.
 
-```csharp
-const string SourceDirectory = @"C:\Path\To\Source";
-const string DestinationDirectory = ""; // Leave empty to auto-create project
+### 2. Run the Tool
+
+Run the tool using the following command:
+
+```bash
+SLC-Package-Converter.exe --sourceDir <SourceDirectory> [--destDir <DestinationDirectory>]
 ```
 
-- `SourceDirectory`: the folder where your current Automation Scripts are located (typically, the `.xml` files are in the root).
-- `DestinationDirectory`:  
-  - If you already created a new DataMiner Package Project, point to that directory.  
-  - **Leave empty** to let the tool automatically create a new package project ( in a new Git branch called `converted-package`.
+- `--sourceDir`: The folder where your current Automation Scripts are located (e.g., the repository folder).
+- `--destDir` (optional):  
+  - If you already created a new DataMiner Package Project, specify the destination directory.  
+  - If omitted, the tool will automatically create a new package project with a `Complete` GitHub workflow in a new Git branch named `converted-package`.
 
+### 3. Example
 
-### 2. Configure Exclusions (Optional)
-
-To skip copying specific directories or files, customize the arrays below:
-
-```csharp
-string[] ExcludedDirs = { "CompanionFiles", "Internal", "Documentation", "Dlls" };
-string[] ExcludedSubDirs = { };
-string[] ExcludedFiles = { "AssemblyInfo.cs" };
+```bash
+SLC-Package-Converter.exe --sourceDir "C:\Path\To\Source" --destDir "C:\Path\To\Destination"
 ```
 
-Modify these lists to suit your project needs.
+If no destination directory is provided:
 
+```bash
+SLC-Package-Converter.exe --sourceDir "C:\Path\To\Source"
+```
 
-### 3. Run the Tool
+### 🔧 Customizing Excluded Files
 
-Build and run the project using **Visual Studio** or the **.NET CLI**.
-
-The tool will:
-- Extract project metadata.
-- Generate a valid `Skyline.DataMiner.Sdk` package project.
-- Organize and copy files.
-- If no destination was provided, automatically:
-  - Create a new package project.
-  - Switch to a Git branch named `converted-package`.
-  - Place the converted content there.
-
+To modify the list of excluded files or folders, clone this repository and update the relevant variables in the `Program.cs` file. After making the changes, rebuild the tool to apply your customizations.
 
 ## 🤝 Contributing
 
@@ -64,4 +53,4 @@ Feel free to open an issue or submit a pull request with suggestions, improvemen
 ## 📬 Contact
 
 Have questions or feedback?  
-Reach out to **[mauro.druwel@skyline.be](mailto:mauro.druwel@skyline.be)**
+Reach out to **[mauro.druwel@skyline.be](mailto:mauro.druwel@skyline.be)**.
