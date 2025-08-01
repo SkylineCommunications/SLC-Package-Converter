@@ -8,6 +8,7 @@ class Program
         // Parse command-line arguments
         string? SourceDirectory = null;
         string? DestinationDirectory = null;
+        string IntegrationType = "Complete"; // Default value
 
         for (int i = 0; i < args.Length; i++)
         {
@@ -21,11 +22,25 @@ class Program
                 DestinationDirectory = args[i + 1];
                 i++; // Skip the value
             }
+            else if ((args[i] == "-I" || args[i] == "--integration") && i + 1 < args.Length)
+            {
+                IntegrationType = args[i + 1];
+                i++; // Skip the value
+            }
         }
 
         if (string.IsNullOrEmpty(SourceDirectory))
         {
-            Console.WriteLine("Usage: SLC-Package-Converter.exe --sourceDir <SourceDirectory> [--destDir <DestinationDirectory>]");
+            Console.WriteLine("Usage: SLC-Package-Converter.exe --sourceDir <SourceDirectory> [--destDir <DestinationDirectory>] [-I|--integration <None|Basic|Complete>]");
+            Console.WriteLine("  -I, --integration  Type of integration (None, Basic, Complete). Default: Complete");
+            return;
+        }
+
+        // Validate integration type
+        string[] validIntegrationTypes = { "None", "Basic", "Complete" };
+        if (!validIntegrationTypes.Contains(IntegrationType, StringComparer.OrdinalIgnoreCase))
+        {
+            Console.WriteLine($"Invalid integration type '{IntegrationType}'. Valid options are: None, Basic, Complete");
             return;
         }
 
@@ -64,7 +79,7 @@ class Program
                 // Command to create a new project and solution in the destination directory
                 string createProjectCommand =
                     $"cd \"{DestinationDirectory}\" && " +
-                    $"dotnet new dataminer-package-project -o \"{currentSlnNameWithoutExtension}\" -auth \"\" -cdp true -I Complete --force && " +
+                    $"dotnet new dataminer-package-project -o \"{currentSlnNameWithoutExtension}\" -auth \"\" -cdp true -I {IntegrationType} --force && " +
                     $"dotnet new sln -n \"{currentSlnNameWithoutExtension}\" && " +
                     $"dotnet sln add \"{currentSlnNameWithoutExtension}/{currentSlnNameWithoutExtension}.csproj\"";
                 CommandExecutor.ExecuteCommand(createProjectCommand);
