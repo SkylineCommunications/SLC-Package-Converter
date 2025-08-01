@@ -36,19 +36,36 @@ SLC-Package-Converter.exe --sourceDir <SourceDirectory> [--destDir <DestinationD
 
 ### 3. Examples
 
-#### Basic Usage
+#### Basic Usage (with destination directory)
 ```bash
 SLC-Package-Converter.exe --sourceDir "C:\Path\To\Source" --destDir "C:\Path\To\Destination"
 ```
 
-#### If no destination directory is provided:
+#### Auto-create new package project (no destination directory)
 ```bash
 SLC-Package-Converter.exe --sourceDir "C:\Path\To\Source"
 ```
 
-#### Customizing the branch name:
+#### Custom branch name (when no destination directory)
 ```bash
-SLC-Package-Converter.exe --sourceDir "C:\Path\To\Source" --branchName "my-custom-branch"
+SLC-Package-Converter.exe --sourceDir "C:\Path\To\Source" --branchName "feature/new-package-structure"
+```
+
+#### Including different GitHub workflows
+```bash
+# No GitHub workflow
+SLC-Package-Converter.exe --sourceDir "C:\Path\To\Source" --includeGitHubWorkflow "None"
+
+# Basic GitHub workflow (build, test, publish)
+SLC-Package-Converter.exe --sourceDir "C:\Path\To\Source" --includeGitHubWorkflow "Basic"
+
+# Complete GitHub workflow with Skyline Quality Gate (default)
+SLC-Package-Converter.exe --sourceDir "C:\Path\To\Source" --includeGitHubWorkflow "Complete"
+```
+
+#### Comprehensive example (multiple arguments)
+```bash
+SLC-Package-Converter.exe --sourceDir "C:\Path\To\Source" --branchName "feature/package-migration" --includeGitHubWorkflow "Basic"
 ```
 
 
