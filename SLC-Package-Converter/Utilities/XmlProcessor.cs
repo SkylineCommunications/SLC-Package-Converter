@@ -8,8 +8,10 @@ namespace SLC_Package_Converter.Utilities
     public static class XmlProcessor
     {
         // Processes XML files in the source directory.
-        public static void ProcessXmlFiles(string sourceDir, string destDir, string? slnFile)
+        public static HashSet<string> ProcessXmlFiles(string sourceDir, string destDir, string? slnFile)
         {
+            var processedFiles = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            
             try
             {
                 // Get all XML files in the source directory
@@ -55,6 +57,16 @@ namespace SLC_Package_Converter.Utilities
                                     string.Empty // Replaces the match with an empty string
                                 );
 
+                                // Track the processed XML file
+                                processedFiles.Add(file);
+
+                                // Track the associated csproj file
+                                string originalCsprojPath = Path.Combine(Path.Combine(Path.GetDirectoryName(file)!, projectName), $"{projectName}.csproj");
+                                if (File.Exists(originalCsprojPath))
+                                {
+                                    processedFiles.Add(originalCsprojPath);
+                                }
+
                                 // Create the ScriptExe object from the XML element
                                 ScriptExe scriptExe = new ScriptExe(exe);
 
@@ -97,6 +109,8 @@ namespace SLC_Package_Converter.Utilities
                         Logger.LogError($"Error processing file {file}: {ex.Message}");
                     }
                 }
+                
+                return processedFiles;
             }
             catch (Exception ex)
             {
