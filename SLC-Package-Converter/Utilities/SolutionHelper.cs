@@ -1,4 +1,6 @@
-﻿namespace SLC_Package_Converter.Utilities
+﻿using System.Collections.Generic;
+
+namespace SLC_Package_Converter.Utilities
 {
     public static class SolutionHelper
     {
@@ -17,21 +19,51 @@
                 Logger.LogInfo("No solution file found in root directory. Searching in subdirectories...");
                 string[] subdirectories = Directory.GetDirectories(directory);
                 
+                List<string> subdirectoriesWithSln = new List<string>();
+                
+                // Find all subdirectories that contain .sln files
                 foreach (string subdirectory in subdirectories)
                 {
                     string[] subSlnFiles = Directory.GetFiles(subdirectory, "*.sln", SearchOption.TopDirectoryOnly);
                     if (subSlnFiles.Length > 0)
                     {
                         Logger.LogInfo($"Solution file found in subdirectory: {subdirectory}");
-                        // Copy all files from subdirectory to root directory
-                        CopySubdirectoryFilesToRoot(subdirectory, directory);
-                        
-                        // Return the path to the solution file now in the root directory
-                        string solutionFileName = Path.GetFileName(subSlnFiles.First());
-                        string rootSolutionPath = Path.Combine(directory, solutionFileName);
-                        
-                        return rootSolutionPath;
+                        subdirectoriesWithSln.Add(subdirectory);
                     }
+                }
+                
+                if (subdirectoriesWithSln.Count > 0)
+                {
+                    // Copy files from all subdirectories with solution files
+                    foreach (string subdirectory in subdirectoriesWithSln)
+                    {
+                        CopySubdirectoryFilesToRoot(subdirectory, directory);
+                    }
+                    
+                    // Clean up: delete the original subdirectories after copying
+                    foreach (string subdirectory in subdirectoriesWithSln)
+                    {
+                        Logger.LogInfo($"Cleaning up original subdirectory: {subdirectory}");
+                        Directory.Delete(subdirectory, recursive: true);
+                    }
+                    
+                    // Delete all existing .sln files in root directory
+                    string[] existingSlnFiles = Directory.GetFiles(directory, "*.sln", SearchOption.TopDirectoryOnly);
+                    foreach (string slnFile in existingSlnFiles)
+                    {
+                        Logger.LogInfo($"Deleting existing solution file: {slnFile}");
+                        File.Delete(slnFile);
+                    }
+                    
+                    // Create a new empty solution file named after the first subdirectory
+                    string firstSubdirectoryName = Path.GetFileName(subdirectoriesWithSln.First());
+                    string newSolutionFileName = $"{firstSubdirectoryName}.sln";
+                    string newSolutionPath = Path.Combine(directory, newSolutionFileName);
+                    
+                    Logger.LogInfo($"Creating new empty solution file: {newSolutionPath}");
+                    File.WriteAllText(newSolutionPath, string.Empty);
+                    
+                    return newSolutionPath;
                 }
 
                 return null;
