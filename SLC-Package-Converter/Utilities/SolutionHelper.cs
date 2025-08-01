@@ -54,10 +54,9 @@ namespace SLC_Package_Converter.Utilities
                         Logger.LogInfo($"Deleting existing solution file: {slnFile}");
                         File.Delete(slnFile);
                     }
-                    
-                    // Create a new empty solution file named after the first subdirectory
-                    string firstSubdirectoryName = Path.GetFileName(subdirectoriesWithSln.First());
-                    string newSolutionFileName = $"{firstSubdirectoryName}.sln";
+
+                    // Create a new empty solution file named after the source directory
+                    string newSolutionFileName = Path.GetFileName(directory) + ".sln";
                     string newSolutionPath = Path.Combine(directory, newSolutionFileName);
                     
                     Logger.LogInfo($"Creating new empty solution file: {newSolutionPath}");
