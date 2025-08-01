@@ -3,13 +3,12 @@
     public static class BranchManager
     {
         // Creates a new branch and copies files from the destination to the source directory.
-        public static void CreateBranchAndCopyFiles(string sourceDir, string destDir)
+        public static void CreateBranchAndCopyFiles(string sourceDir, string destDir, string branchName = "converted-package")
         {
             try
             {
                 Directory.SetCurrentDirectory(sourceDir);
 
-                string branchName = "converted-package";
                 CommandExecutor.ExecuteCommand($"git checkout --orphan {branchName}");
                 CommandExecutor.ExecuteCommand("git rm -rf .");
                 CommandExecutor.ExecuteCommand("git clean -fd");

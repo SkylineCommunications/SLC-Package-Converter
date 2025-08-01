@@ -21,7 +21,7 @@ Download the latest release of the tool from the [**Releases**](https://github.c
 Run the tool using the following command:
 
 ```bash
-SLC-Package-Converter.exe --sourceDir <SourceDirectory> [--destDir <DestinationDirectory>] [--includeGitHubWorkflow <None|Basic|Complete>]
+SLC-Package-Converter.exe --sourceDir <SourceDirectory> [--destDir <DestinationDirectory>] [--includeGitHubWorkflow <None|Basic|Complete>] [--branchName <BranchName>]
 ```
 
 - `--sourceDir`: The folder where your current Automation Scripts are located (e.g., the repository folder).
@@ -32,6 +32,7 @@ SLC-Package-Converter.exe --sourceDir <SourceDirectory> [--destDir <DestinationD
   - `None`: No GitHub workflow
   - `Basic`: Basic GitHub workflow (build, test, publish)
   - `Complete`: Complete GitHub workflow (Skyline Quality Gate) - **default value**
+- `--branchName` (optional): Name of the Git branch to create when no destination directory is provided. **Default:** `converted-package`
 
 ### 3. Examples
 
@@ -43,6 +44,11 @@ SLC-Package-Converter.exe --sourceDir "C:\Path\To\Source" --destDir "C:\Path\To\
 #### If no destination directory is provided:
 ```bash
 SLC-Package-Converter.exe --sourceDir "C:\Path\To\Source"
+```
+
+#### Customizing the branch name:
+```bash
+SLC-Package-Converter.exe --sourceDir "C:\Path\To\Source" --branchName "my-custom-branch"
 ```
 
 
