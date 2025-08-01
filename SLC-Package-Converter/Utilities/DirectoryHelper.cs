@@ -5,20 +5,27 @@ namespace SLC_Package_Converter.Utilities
     public static class DirectoryHelper
     {
         // Copies other directories from the source to the destination, excluding specified directories.
-        public static void CopyOtherDirectories(string sourceDir, string destDir, string[] excludedDirs, string[] excludedSubDirs, string[] excludedFiles)
+        public static void CopyOtherDirectories(string sourceDir, string destDir, string[] excludedDirs, string[] excludedSubDirs, string[] excludedFiles, HashSet<string>? processedFiles = null)
         {
             try
             {
                 DirectoryInfo sourceDirInfo = new DirectoryInfo(sourceDir);
                 foreach (FileInfo file in sourceDirInfo.GetFiles())
                 {
-                    // Skip .xml files  
-                    if (file.Extension.Equals(".xml", StringComparison.OrdinalIgnoreCase) || file.Extension.Equals(".sln", StringComparison.OrdinalIgnoreCase) || file.Extension.Equals(".slnf", StringComparison.OrdinalIgnoreCase) || excludedFiles.Contains(file.Name, StringComparer.OrdinalIgnoreCase))
+                    // Skip processed files (if list provided), or skip .xml files by default (if no list provided)
+                    bool shouldSkipXmlCsproj = processedFiles != null 
+                        ? processedFiles.Contains(file.FullName)
+                        : (file.Extension.Equals(".xml", StringComparison.OrdinalIgnoreCase) || file.Extension.Equals(".csproj", StringComparison.OrdinalIgnoreCase));
+                    
+                    if (shouldSkipXmlCsproj || 
+                        file.Extension.Equals(".sln", StringComparison.OrdinalIgnoreCase) || 
+                        file.Extension.Equals(".slnf", StringComparison.OrdinalIgnoreCase) || 
+                        excludedFiles.Contains(file.Name, StringComparer.OrdinalIgnoreCase))
                     {
                         continue;
                     }
 
-                    // Perform operations on non-.xml files  
+                    // Perform operations on non-excluded files  
                     string destinationFilePath = Path.Combine(destDir, file.Name);
                     file.CopyTo(destinationFilePath, false);
                 }
@@ -53,7 +60,7 @@ namespace SLC_Package_Converter.Utilities
                         );
                     }
 
-                    DirectoryCopy(dir.FullName, destinationDirPath, true, excludedSubDirs, excludedFiles);
+                    DirectoryCopy(dir.FullName, destinationDirPath, true, excludedSubDirs, excludedFiles, processedFiles);
                 }
             }
             catch (Exception ex)
@@ -64,7 +71,7 @@ namespace SLC_Package_Converter.Utilities
         }
 
         // Copies a directory and its contents to a new location.
-        public static void DirectoryCopy(string sourceDirName, string destDirName, bool copySubDirs, string[] excludedSubDirs, string[] excludedFiles)
+        public static void DirectoryCopy(string sourceDirName, string destDirName, bool copySubDirs, string[] excludedSubDirs, string[] excludedFiles, HashSet<string>? processedFiles = null)
         {
             try
             {
@@ -87,10 +94,12 @@ namespace SLC_Package_Converter.Utilities
                 FileInfo[] files = dir.GetFiles();
                 foreach (FileInfo file in files)
                 {
-                    // Skip excluded files and specific file types
-                    if (file.Extension.Equals(".xml", StringComparison.OrdinalIgnoreCase) ||
-                        file.Extension.Equals(".csproj", StringComparison.OrdinalIgnoreCase) ||
-                        excludedFiles.Contains(file.Name, StringComparer.OrdinalIgnoreCase))
+                    // Skip processed files (if list provided), or skip .xml/.csproj files by default (if no list provided)
+                    bool shouldSkipXmlCsproj = processedFiles != null 
+                        ? processedFiles.Contains(file.FullName)
+                        : (file.Extension.Equals(".xml", StringComparison.OrdinalIgnoreCase) || file.Extension.Equals(".csproj", StringComparison.OrdinalIgnoreCase));
+                    
+                    if (shouldSkipXmlCsproj || excludedFiles.Contains(file.Name, StringComparer.OrdinalIgnoreCase))
                     {
                         continue;
                     }
@@ -124,7 +133,7 @@ namespace SLC_Package_Converter.Utilities
 
                         string tempPath = Path.Combine(destDirName, subdir.Name);
 
-                        DirectoryCopy(subdir.FullName, tempPath, copySubDirs, excludedSubDirs, excludedFiles);
+                        DirectoryCopy(subdir.FullName, tempPath, copySubDirs, excludedSubDirs, excludedFiles, processedFiles);
                     }
                 }
             }

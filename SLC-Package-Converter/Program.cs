@@ -79,8 +79,8 @@ class Program
             string? destSlnFile = SolutionHelper.GetSolutionFile(DestinationDirectory);
 
             // Process XML files in the source directory and copy other directories
-            XmlProcessor.ProcessXmlFiles(SourceDirectory, DestinationDirectory, destSlnFile);
-            DirectoryHelper.CopyOtherDirectories(SourceDirectory, DestinationDirectory, ExcludedDirs, ExcludedSubDirs, ExcludedFiles);
+            var processedFiles = XmlProcessor.ProcessXmlFiles(SourceDirectory, DestinationDirectory, destSlnFile);
+            DirectoryHelper.CopyOtherDirectories(SourceDirectory, DestinationDirectory, ExcludedDirs, ExcludedSubDirs, ExcludedFiles, processedFiles);
             SolutionHelper.AddSharedProjectReferences(sourceSlnFile, destSlnFile);
 
             // If branch mode is enabled, create a branch and copy files
