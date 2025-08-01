@@ -22,7 +22,7 @@ class Program
                 DestinationDirectory = args[i + 1];
                 i++; // Skip the value
             }
-            else if ((args[i] == "-I" || args[i] == "--IncludeGitHubWorkflow") && i + 1 < args.Length)
+            else if (args[i] == "--includeGitHubWorkflow" && i + 1 < args.Length)
             {
                 IncludeGitHubWorkflow = args[i + 1];
                 i++; // Skip the value
@@ -31,14 +31,13 @@ class Program
 
         if (string.IsNullOrEmpty(SourceDirectory))
         {
-            Console.WriteLine("Usage: SLC-Package-Converter.exe --sourceDir <SourceDirectory> [--destDir <DestinationDirectory>] [-I|--IncludeGitHubWorkflow <None|Basic|Complete>]");
-            Console.WriteLine("  -I, --IncludeGitHubWorkflow  Type of GitHub workflow to include (None, Basic, Complete). Default: Complete");
+            Console.WriteLine("Usage: SLC-Package-Converter.exe --sourceDir <SourceDirectory> [--destDir <DestinationDirectory>] [--includeGitHubWorkflow <None|Basic|Complete>]");
             return;
         }
 
         // Validate GitHub workflow type
         string[] validWorkflowTypes = { "None", "Basic", "Complete" };
-        if (!validWorkflowTypes.Contains(IncludeGitHubWorkflow, StringComparer.OrdinalIgnoreCase))
+        if (!validWorkflowTypes.Contains(IncludeGitHubWorkflow, StringComparer.Ordinal))
         {
             Console.WriteLine($"Invalid GitHub workflow type '{IncludeGitHubWorkflow}'. Valid options are: None, Basic, Complete");
             return;
