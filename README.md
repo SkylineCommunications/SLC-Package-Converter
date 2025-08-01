@@ -40,7 +40,7 @@ SLC-Package-Converter.exe --sourceDir <SourceDirectory> [--destDir <DestinationD
 SLC-Package-Converter.exe --sourceDir "C:\Path\To\Source" --destDir "C:\Path\To\Destination"
 ```
 
-#### Default Behavior (Complete GitHub Workflow)
+#### If no destination directory is provided:
 ```bash
 SLC-Package-Converter.exe --sourceDir "C:\Path\To\Source"
 ```
