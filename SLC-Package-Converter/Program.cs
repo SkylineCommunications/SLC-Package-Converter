@@ -8,6 +8,7 @@ class Program
         // Parse command-line arguments
         string? SourceDirectory = null;
         string? DestinationDirectory = null;
+        string IncludeGitHubWorkflow = "Complete"; // Default value
 
         for (int i = 0; i < args.Length; i++)
         {
@@ -21,11 +22,24 @@ class Program
                 DestinationDirectory = args[i + 1];
                 i++; // Skip the value
             }
+            else if (args[i] == "--includeGitHubWorkflow" && i + 1 < args.Length)
+            {
+                IncludeGitHubWorkflow = args[i + 1];
+                i++; // Skip the value
+            }
         }
 
         if (string.IsNullOrEmpty(SourceDirectory))
         {
-            Console.WriteLine("Usage: SLC-Package-Converter.exe --sourceDir <SourceDirectory> [--destDir <DestinationDirectory>]");
+            Console.WriteLine("Usage: SLC-Package-Converter.exe --sourceDir <SourceDirectory> [--destDir <DestinationDirectory>] [--includeGitHubWorkflow <None|Basic|Complete>]");
+            return;
+        }
+
+        // Validate GitHub workflow type
+        string[] validWorkflowTypes = { "None", "Basic", "Complete" };
+        if (!validWorkflowTypes.Contains(IncludeGitHubWorkflow, StringComparer.Ordinal))
+        {
+            Console.WriteLine($"Invalid GitHub workflow type '{IncludeGitHubWorkflow}'. Valid options are: None, Basic, Complete");
             return;
         }
 
@@ -64,7 +78,7 @@ class Program
                 // Command to create a new project and solution in the destination directory
                 string createProjectCommand =
                     $"cd \"{DestinationDirectory}\" && " +
-                    $"dotnet new dataminer-package-project -o \"{currentSlnNameWithoutExtension}\" -auth \"\" -cdp true -I Complete --force && " +
+                    $"dotnet new dataminer-package-project -o \"{currentSlnNameWithoutExtension}\" -auth \"\" -cdp true -I {IncludeGitHubWorkflow} --force && " +
                     $"dotnet new sln -n \"{currentSlnNameWithoutExtension}\" && " +
                     $"dotnet sln add \"{currentSlnNameWithoutExtension}/{currentSlnNameWithoutExtension}.csproj\"";
                 CommandExecutor.ExecuteCommand(createProjectCommand);
