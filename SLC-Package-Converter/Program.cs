@@ -8,7 +8,7 @@ class Program
         // Parse command-line arguments
         string? SourceDirectory = null;
         string? DestinationDirectory = null;
-        string IntegrationType = "Complete"; // Default value
+        string IncludeGitHubWorkflow = "Complete"; // Default value
 
         for (int i = 0; i < args.Length; i++)
         {
@@ -22,25 +22,25 @@ class Program
                 DestinationDirectory = args[i + 1];
                 i++; // Skip the value
             }
-            else if ((args[i] == "-I" || args[i] == "--integration") && i + 1 < args.Length)
+            else if ((args[i] == "-I" || args[i] == "--IncludeGitHubWorkflow") && i + 1 < args.Length)
             {
-                IntegrationType = args[i + 1];
+                IncludeGitHubWorkflow = args[i + 1];
                 i++; // Skip the value
             }
         }
 
         if (string.IsNullOrEmpty(SourceDirectory))
         {
-            Console.WriteLine("Usage: SLC-Package-Converter.exe --sourceDir <SourceDirectory> [--destDir <DestinationDirectory>] [-I|--integration <None|Basic|Complete>]");
-            Console.WriteLine("  -I, --integration  Type of integration (None, Basic, Complete). Default: Complete");
+            Console.WriteLine("Usage: SLC-Package-Converter.exe --sourceDir <SourceDirectory> [--destDir <DestinationDirectory>] [-I|--IncludeGitHubWorkflow <None|Basic|Complete>]");
+            Console.WriteLine("  -I, --IncludeGitHubWorkflow  Type of GitHub workflow to include (None, Basic, Complete). Default: Complete");
             return;
         }
 
-        // Validate integration type
-        string[] validIntegrationTypes = { "None", "Basic", "Complete" };
-        if (!validIntegrationTypes.Contains(IntegrationType, StringComparer.OrdinalIgnoreCase))
+        // Validate GitHub workflow type
+        string[] validWorkflowTypes = { "None", "Basic", "Complete" };
+        if (!validWorkflowTypes.Contains(IncludeGitHubWorkflow, StringComparer.OrdinalIgnoreCase))
         {
-            Console.WriteLine($"Invalid integration type '{IntegrationType}'. Valid options are: None, Basic, Complete");
+            Console.WriteLine($"Invalid GitHub workflow type '{IncludeGitHubWorkflow}'. Valid options are: None, Basic, Complete");
             return;
         }
 
@@ -79,7 +79,7 @@ class Program
                 // Command to create a new project and solution in the destination directory
                 string createProjectCommand =
                     $"cd \"{DestinationDirectory}\" && " +
-                    $"dotnet new dataminer-package-project -o \"{currentSlnNameWithoutExtension}\" -auth \"\" -cdp true -I {IntegrationType} --force && " +
+                    $"dotnet new dataminer-package-project -o \"{currentSlnNameWithoutExtension}\" -auth \"\" -cdp true -I {IncludeGitHubWorkflow} --force && " +
                     $"dotnet new sln -n \"{currentSlnNameWithoutExtension}\" && " +
                     $"dotnet sln add \"{currentSlnNameWithoutExtension}/{currentSlnNameWithoutExtension}.csproj\"";
                 CommandExecutor.ExecuteCommand(createProjectCommand);
