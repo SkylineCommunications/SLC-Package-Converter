@@ -1,4 +1,6 @@
-﻿namespace SLC_Package_Converter.Utilities
+﻿using System.Collections.Generic;
+
+namespace SLC_Package_Converter.Utilities
 {
     public static class SolutionHelper
     {
@@ -8,7 +10,62 @@
             {
                 // Get the first .sln file in the directory
                 string[] slnFiles = Directory.GetFiles(directory, "*.sln", SearchOption.TopDirectoryOnly);
-                return slnFiles.FirstOrDefault();
+                if (slnFiles.Length > 0)
+                {
+                    return slnFiles.FirstOrDefault();
+                }
+
+                // If no solution file found in root, search one level down in subdirectories
+                Logger.LogInfo("No solution file found in root directory. Searching in subdirectories...");
+                string[] subdirectories = Directory.GetDirectories(directory);
+                
+                List<string> subdirectoriesWithSln = new List<string>();
+                
+                // Find all subdirectories that contain .sln files
+                foreach (string subdirectory in subdirectories)
+                {
+                    string[] subSlnFiles = Directory.GetFiles(subdirectory, "*.sln", SearchOption.TopDirectoryOnly);
+                    if (subSlnFiles.Length > 0)
+                    {
+                        Logger.LogInfo($"Solution file found in subdirectory: {subdirectory}");
+                        subdirectoriesWithSln.Add(subdirectory);
+                    }
+                }
+                
+                if (subdirectoriesWithSln.Count > 0)
+                {
+                    // Copy files from all subdirectories with solution files
+                    foreach (string subdirectory in subdirectoriesWithSln)
+                    {
+                        CopySubdirectoryFilesToRoot(subdirectory, directory);
+                    }
+                    
+                    // Clean up: delete the original subdirectories after copying
+                    foreach (string subdirectory in subdirectoriesWithSln)
+                    {
+                        Logger.LogInfo($"Cleaning up original subdirectory: {subdirectory}");
+                        Directory.Delete(subdirectory, recursive: true);
+                    }
+                    
+                    // Delete all existing .sln files in root directory
+                    string[] existingSlnFiles = Directory.GetFiles(directory, "*.sln", SearchOption.TopDirectoryOnly);
+                    foreach (string slnFile in existingSlnFiles)
+                    {
+                        Logger.LogInfo($"Deleting existing solution file: {slnFile}");
+                        File.Delete(slnFile);
+                    }
+
+                    // Create a new empty solution file named after the source directory
+                    string newSolutionFileName = Path.GetFileName(directory) + ".sln";
+                    string newSolutionPath = Path.Combine(directory, newSolutionFileName);
+                    
+                    Logger.LogInfo($"Creating new empty solution file: {newSolutionPath}");
+                    File.WriteAllText(newSolutionPath, string.Empty);
+                    
+                    return newSolutionPath;
+                }
+
+                return null;
             }
             catch (Exception ex)
             {
@@ -66,6 +123,109 @@
             {
                 Logger.LogError($"Error adding shared project references: {ex.Message}");
                 throw;
+            }
+        }
+
+        private static void CopySubdirectoryFilesToRoot(string subdirectoryPath, string rootDirectory)
+        {
+            try
+            {
+                Logger.LogInfo($"Copying files from {subdirectoryPath} to {rootDirectory}");
+                
+                // Get all files in the subdirectory
+                string[] files = Directory.GetFiles(subdirectoryPath, "*", SearchOption.TopDirectoryOnly);
+                
+                foreach (string sourceFile in files)
+                {
+                    string fileName = Path.GetFileName(sourceFile);
+                    string destinationFile = Path.Combine(rootDirectory, fileName);
+                    
+                    // Check if file already exists in root directory
+                    if (File.Exists(destinationFile))
+                    {
+                        // Compare file sizes and warn if different
+                        FileInfo sourceInfo = new FileInfo(sourceFile);
+                        FileInfo destInfo = new FileInfo(destinationFile);
+                        
+                        if (sourceInfo.Length != destInfo.Length)
+                        {
+                            Logger.LogWarning($"Replacing {fileName}: file size differs (original: {destInfo.Length} bytes, new: {sourceInfo.Length} bytes)");
+                        }
+                        else
+                        {
+                            Logger.LogInfo($"Replacing {fileName} (same file size: {sourceInfo.Length} bytes)");
+                        }
+                    }
+                    else
+                    {
+                        Logger.LogInfo($"Copying {fileName} to root directory");
+                    }
+                    
+                    // Copy the file, overwriting if it exists
+                    File.Copy(sourceFile, destinationFile, true);
+                }
+                
+                // Also copy subdirectories from the subdirectory
+                string[] subDirectories = Directory.GetDirectories(subdirectoryPath);
+                foreach (string subDir in subDirectories)
+                {
+                    string subDirName = Path.GetFileName(subDir);
+                    string destinationSubDir = Path.Combine(rootDirectory, subDirName);
+                    
+                    if (!Directory.Exists(destinationSubDir))
+                    {
+                        Directory.CreateDirectory(destinationSubDir);
+                        Logger.LogInfo($"Created directory {subDirName} in root");
+                    }
+                    
+                    CopyDirectoryRecursively(subDir, destinationSubDir);
+                }
+                
+                Logger.LogInfo($"Successfully copied all files from {subdirectoryPath} to root directory");
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError($"Error copying files from subdirectory to root: {ex.Message}");
+                throw;
+            }
+        }
+
+        private static void CopyDirectoryRecursively(string sourceDir, string destDir)
+        {
+            // Create destination directory if it doesn't exist
+            if (!Directory.Exists(destDir))
+            {
+                Directory.CreateDirectory(destDir);
+            }
+
+            // Copy all files
+            string[] files = Directory.GetFiles(sourceDir);
+            foreach (string file in files)
+            {
+                string fileName = Path.GetFileName(file);
+                string destFile = Path.Combine(destDir, fileName);
+                
+                if (File.Exists(destFile))
+                {
+                    FileInfo sourceInfo = new FileInfo(file);
+                    FileInfo destInfo = new FileInfo(destFile);
+                    
+                    if (sourceInfo.Length != destInfo.Length)
+                    {
+                        Logger.LogWarning($"Replacing {Path.Combine(Path.GetFileName(destDir), fileName)}: file size differs (original: {destInfo.Length} bytes, new: {sourceInfo.Length} bytes)");
+                    }
+                }
+                
+                File.Copy(file, destFile, true);
+            }
+
+            // Copy all subdirectories
+            string[] subdirs = Directory.GetDirectories(sourceDir);
+            foreach (string subdir in subdirs)
+            {
+                string subdirName = Path.GetFileName(subdir);
+                string destSubdir = Path.Combine(destDir, subdirName);
+                CopyDirectoryRecursively(subdir, destSubdir);
             }
         }
 
