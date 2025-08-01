@@ -79,7 +79,7 @@ class Program
             string? destSlnFile = SolutionHelper.GetSolutionFile(DestinationDirectory);
 
             // Process XML files in the source directory and copy other directories
-            XmlProcessor.ProcessXmlFiles(SourceDirectory, DestinationDirectory, Ns, destSlnFile);
+            XmlProcessor.ProcessXmlFiles(SourceDirectory, DestinationDirectory, destSlnFile);
             DirectoryHelper.CopyOtherDirectories(SourceDirectory, DestinationDirectory, ExcludedDirs, ExcludedSubDirs, ExcludedFiles);
             SolutionHelper.AddSharedProjectReferences(sourceSlnFile, destSlnFile);
 

@@ -8,7 +8,7 @@ namespace SLC_Package_Converter.Utilities
     public static class XmlProcessor
     {
         // Processes XML files in the source directory.
-        public static void ProcessXmlFiles(string sourceDir, string destDir, XNamespace ns, string? slnFile)
+        public static void ProcessXmlFiles(string sourceDir, string destDir, string? slnFile)
         {
             try
             {
@@ -20,7 +20,14 @@ namespace SLC_Package_Converter.Utilities
                     {
                         // Load the XML document
                         XDocument doc = XDocument.Load(file);
-                        var exeElements = doc.Descendants(ns + "Exe");
+                        XNamespace ns = doc.Root?.Name.Namespace ?? XNamespace.None;
+
+                        // Use ns + "ElementName" only if the namespace exists
+                        string? scriptName = doc.Root?.Element(ns + "Name")?.Value ?? doc.Root?.Element("Name")?.Value;
+
+                        var exeElements = doc.Descendants(ns + "Exe").Any()
+                            ? doc.Descendants(ns + "Exe")
+                            : doc.Descendants("Exe");
 
                         // Skip files with multiple Exe elements
                         if (exeElements.Count() > 1)
@@ -29,8 +36,6 @@ namespace SLC_Package_Converter.Utilities
                             continue;
                         }
 
-                        // Extract the script name from the <Name> element
-                        string? scriptName = doc.Root?.Element(ns + "Name")?.Value;
                         if (string.IsNullOrEmpty(scriptName))
                         {
                             Logger.LogWarning($"No script name found in {file}. Skipping the file.");
