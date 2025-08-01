@@ -45,17 +45,6 @@ SLC-Package-Converter.exe --sourceDir "C:\Path\To\Source" --destDir "C:\Path\To\
 SLC-Package-Converter.exe --sourceDir "C:\Path\To\Source"
 ```
 
-#### With Different GitHub Workflow Types
-```bash
-# No GitHub workflow
-SLC-Package-Converter.exe --sourceDir "C:\Path\To\Source" --includeGitHubWorkflow None
-
-# Basic GitHub workflow
-SLC-Package-Converter.exe --sourceDir "C:\Path\To\Source" --includeGitHubWorkflow Basic
-
-# Complete GitHub workflow (explicit)
-SLC-Package-Converter.exe --sourceDir "C:\Path\To\Source" --includeGitHubWorkflow Complete
-```
 
 ### 🔧 Customizing Excluded Files
 
