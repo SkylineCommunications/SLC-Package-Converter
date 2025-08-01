@@ -21,24 +21,40 @@ Download the latest release of the tool from the [**Releases**](https://github.c
 Run the tool using the following command:
 
 ```bash
-SLC-Package-Converter.exe --sourceDir <SourceDirectory> [--destDir <DestinationDirectory>]
+SLC-Package-Converter.exe --sourceDir <SourceDirectory> [--destDir <DestinationDirectory>] [--includeGitHubWorkflow <None|Basic|Complete>]
 ```
 
 - `--sourceDir`: The folder where your current Automation Scripts are located (e.g., the repository folder).
 - `--destDir` (optional):  
   - If you already created a new DataMiner Package Project, specify the destination directory.  
-  - If omitted, the tool will automatically create a new package project with a `Complete` GitHub workflow in a new Git branch named `converted-package`.
+  - If omitted, the tool will automatically create a new package project in a new Git branch named `converted-package`.
+- `--includeGitHubWorkflow` (optional): Type of GitHub workflow to include. Options:
+  - `None`: No GitHub workflow
+  - `Basic`: Basic GitHub workflow (build, test, publish)
+  - `Complete`: Complete GitHub workflow (Skyline Quality Gate) - **default value**
 
-### 3. Example
+### 3. Examples
 
+#### Basic Usage
 ```bash
 SLC-Package-Converter.exe --sourceDir "C:\Path\To\Source" --destDir "C:\Path\To\Destination"
 ```
 
-If no destination directory is provided:
-
+#### Default Behavior (Complete GitHub Workflow)
 ```bash
 SLC-Package-Converter.exe --sourceDir "C:\Path\To\Source"
+```
+
+#### With Different GitHub Workflow Types
+```bash
+# No GitHub workflow
+SLC-Package-Converter.exe --sourceDir "C:\Path\To\Source" --includeGitHubWorkflow None
+
+# Basic GitHub workflow
+SLC-Package-Converter.exe --sourceDir "C:\Path\To\Source" --includeGitHubWorkflow Basic
+
+# Complete GitHub workflow (explicit)
+SLC-Package-Converter.exe --sourceDir "C:\Path\To\Source" --includeGitHubWorkflow Complete
 ```
 
 ### 🔧 Customizing Excluded Files
