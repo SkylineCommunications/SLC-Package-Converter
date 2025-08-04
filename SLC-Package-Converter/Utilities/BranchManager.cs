@@ -29,7 +29,7 @@
                 }
 
                 CommandExecutor.ExecuteCommand("git add .");
-                CommandExecutor.ExecuteCommand($"git commit -m \"Copied files from destination directory to new branch {branchName}\"");
+                CommandExecutor.ExecuteCommand($"git commit -m \"Converted package using SLC-Package-Converter into {branchName} branch\"");
 
                 Logger.LogInfo($"Successfully created branch '{branchName}' and copied files.");
             }
