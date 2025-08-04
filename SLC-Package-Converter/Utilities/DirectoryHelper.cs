@@ -126,7 +126,15 @@ namespace SLC_Package_Converter.Utilities
                     // Recombine the sanitized file name with the original extension
                     string tempPath = Path.Combine(destDirName, sanitizedFileName + fileExtension);
 
-                    file.CopyTo(tempPath, false);
+                    try
+                    {
+                        file.CopyTo(tempPath, false);
+                    }
+                    catch (IOException ex)
+                    {
+                        Logger.LogError($"Failed to copy file {file.FullName} to {tempPath}. It may already exist or be in use. code {ex}");
+                        continue;
+                    }
                 }
 
                 // Copy subdirectories if specified
