@@ -113,21 +113,25 @@ class Program
         {
             // Handle directory not found exceptions
             Logger.LogError($"Directory not found: {ex.Message}");
+            Environment.Exit(1);
         }
         catch (IOException ex)
         {
             // Handle I/O exceptions
             Logger.LogError($"I/O error: {ex.Message}");
+            Environment.Exit(1);
         }
         catch (UnauthorizedAccessException ex)
         {
             // Handle unauthorized access exceptions
             Logger.LogError($"Access denied: {ex.Message}");
+            Environment.Exit(1);
         }
         catch (Exception ex)
         {
             // Handle any other unexpected exceptions
             Logger.LogError($"An unexpected error occurred: {ex.Message}");
+            Environment.Exit(1);
         }
     }
 }
