@@ -1,9 +1,26 @@
 ﻿using System.Text.RegularExpressions;
+using System.Text;
 
 namespace SLC_Package_Converter.Utilities
 {
     public static class DirectoryHelper
     {
+        // Copies a .csproj file, removing any lines containing "AssemblyInfo.cs"
+        public static void CopyAndSanitizeCsproj(string sourcePath, string destPath)
+        {
+            try
+            {
+                var lines = File.ReadAllLines(sourcePath);
+                var filteredLines = lines.Where(line => !line.Contains("AssemblyInfo.cs", StringComparison.OrdinalIgnoreCase));
+                File.WriteAllLines(destPath, filteredLines);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError($"Failed to copy and sanitize .csproj file {sourcePath} to {destPath}: {ex.Message}");
+                throw;
+            }
+        }
+
         // Copies other directories from the source to the destination, excluding specified directories.
         public static void CopyOtherDirectories(string sourceDir, string destDir, string[] excludedDirs, string[] excludedSubDirs, string[] excludedFiles, HashSet<string>? processedFiles = null)
         {
@@ -29,7 +46,14 @@ namespace SLC_Package_Converter.Utilities
                     string destinationFilePath = Path.Combine(destDir, file.Name);
                     try
                     {
-                        file.CopyTo(destinationFilePath, false);
+                        if (file.Extension.Equals(".csproj", StringComparison.OrdinalIgnoreCase))
+                        {
+                            CopyAndSanitizeCsproj(file.FullName, destinationFilePath);
+                        }
+                        else
+                        {
+                            file.CopyTo(destinationFilePath, false);
+                        }
                     }
                     catch (IOException ex)
                     {
@@ -128,7 +152,14 @@ namespace SLC_Package_Converter.Utilities
 
                     try
                     {
-                        file.CopyTo(tempPath, false);
+                        if (file.Extension.Equals(".csproj", StringComparison.OrdinalIgnoreCase))
+                        {
+                            CopyAndSanitizeCsproj(file.FullName, tempPath);
+                        }
+                        else
+                        {
+                            file.CopyTo(tempPath, false);
+                        }
                     }
                     catch (IOException ex)
                     {
