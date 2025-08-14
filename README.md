@@ -21,7 +21,7 @@ Download the latest release of the tool from the [**Releases**](https://github.c
 Run the tool using the following command:
 
 ```bash
-SLC-Package-Converter.exe --sourceDir <SourceDirectory> [--destDir <DestinationDirectory>] [--includeGitHubWorkflow <None|Basic|Complete>] [--branchName <BranchName>]
+SLC-Package-Converter.exe --sourceDir <SourceDirectory> [--destDir <DestinationDirectory>] [--includeGitHubWorkflow <None|Basic|Complete>] [--branchName <BranchName>] [--baseBranch <BaseBranch>]
 ```
 
 - `--sourceDir`: The folder where your current Automation Scripts are located (e.g., the repository folder).
@@ -33,6 +33,7 @@ SLC-Package-Converter.exe --sourceDir <SourceDirectory> [--destDir <DestinationD
   - `Basic`: Basic GitHub workflow (build, test, publish)
   - `Complete`: Complete GitHub workflow (Skyline Quality Gate) - **default value**
 - `--branchName` (optional): Name of the Git branch to create when no destination directory is provided. **Default:** `converted-package`
+- `--baseBranch` (optional): Name of the existing Git branch to create the new branch from. When specified, preserves git history by branching from the base branch instead of creating an orphan branch. **Default:** Creates orphan branch (no base)
 
 ### 3. Examples
 
@@ -51,6 +52,11 @@ SLC-Package-Converter.exe --sourceDir "C:\Path\To\Source"
 SLC-Package-Converter.exe --sourceDir "C:\Path\To\Source" --branchName "feature/new-package-structure"
 ```
 
+#### Create branch from existing branch (preserves git history)
+```bash
+SLC-Package-Converter.exe --sourceDir "C:\Path\To\Source" --branchName "feature/converted-package" --baseBranch "main"
+```
+
 #### Including different GitHub workflows
 ```bash
 # No GitHub workflow
@@ -65,7 +71,7 @@ SLC-Package-Converter.exe --sourceDir "C:\Path\To\Source" --includeGitHubWorkflo
 
 #### Comprehensive example (multiple arguments)
 ```bash
-SLC-Package-Converter.exe --sourceDir "C:\Path\To\Source" --branchName "feature/package-migration" --includeGitHubWorkflow "Basic"
+SLC-Package-Converter.exe --sourceDir "C:\Path\To\Source" --branchName "feature/package-migration" --includeGitHubWorkflow "Basic" --baseBranch "develop"
 ```
 
 
