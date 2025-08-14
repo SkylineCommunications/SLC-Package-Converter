@@ -3,14 +3,16 @@
     public static class BranchManager
     {
         // Creates a new branch and copies files from the destination to the source directory.
-        public static void CreateBranchAndCopyFiles(string sourceDir, string destDir, string branchName = "converted-package", string? baseBranch = null)
+        public static void CreateBranchAndCopyFiles(string sourceDir, string destDir, string branchName = "converted-package", bool preserveHistory = false)
         {
             try
             {
                 Directory.SetCurrentDirectory(sourceDir);
 
-                // Create branch based on baseBranch parameter
-                if (string.IsNullOrEmpty(baseBranch))
+                string? currentBranch = null;
+                
+                // Create branch based on preserveHistory parameter
+                if (!preserveHistory)
                 {
                     // Use orphan branch (original behavior)
                     CommandExecutor.ExecuteCommand($"git checkout --orphan {branchName}");
@@ -19,8 +21,15 @@
                 }
                 else
                 {
-                    // Create branch from base branch to preserve git history
-                    CommandExecutor.ExecuteCommand($"git checkout -b {branchName} {baseBranch}");
+                    // Get current branch name first
+                    currentBranch = GetCurrentBranch();
+                    if (string.IsNullOrEmpty(currentBranch))
+                    {
+                        throw new InvalidOperationException("Could not determine current branch. Make sure you are in a git repository with a valid branch.");
+                    }
+                    
+                    // Create branch from current branch to preserve git history
+                    CommandExecutor.ExecuteCommand($"git checkout -b {branchName} {currentBranch}");
                     CommandExecutor.ExecuteCommand("git rm -rf .");
                     CommandExecutor.ExecuteCommand("git clean -fd");
                 }
@@ -42,15 +51,15 @@
 
                 CommandExecutor.ExecuteCommand("git add .");
                 
-                string commitMessage = string.IsNullOrEmpty(baseBranch) 
+                string commitMessage = !preserveHistory 
                     ? $"Converted package using SLC-Package-Converter into {branchName} branch"
-                    : $"Converted package using SLC-Package-Converter into {branchName} branch (from {baseBranch})";
+                    : $"Converted package using SLC-Package-Converter into {branchName} branch (from {currentBranch})";
                     
                 CommandExecutor.ExecuteCommand($"git commit -m \"{commitMessage}\"");
 
-                string successMessage = string.IsNullOrEmpty(baseBranch)
+                string successMessage = !preserveHistory
                     ? $"Successfully created orphan branch '{branchName}' and copied files."
-                    : $"Successfully created branch '{branchName}' from '{baseBranch}' and copied files.";
+                    : $"Successfully created branch '{branchName}' from '{currentBranch}' and copied files.";
                     
                 Logger.LogInfo(successMessage);
             }
@@ -58,6 +67,20 @@
             {
                 Logger.LogError($"Error creating branch and copying files: {ex.Message}");
                 throw;
+            }
+        }
+
+        private static string? GetCurrentBranch()
+        {
+            try
+            {
+                // Use git command to get current branch name
+                var result = CommandExecutor.ExecuteCommandWithOutput("git branch --show-current");
+                return result?.Trim();
+            }
+            catch
+            {
+                return null;
             }
         }
     }

@@ -71,5 +71,42 @@
                 throw;
             }
         }
+
+        public static string? ExecuteCommandWithOutput(string command)
+        {
+            try
+            {
+                var processStartInfo = new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = "cmd.exe",
+                    Arguments = $"/c {command}",
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                };
+
+                using (var process = System.Diagnostics.Process.Start(processStartInfo))
+                {
+                    if (process == null)
+                    {
+                        Logger.LogError($"Failed to start process for command '{command}'");
+                        return null;
+                    }
+
+                    using (var reader = process.StandardOutput)
+                    {
+                        string output = reader.ReadToEnd();
+                        process.WaitForExit();
+                        return output;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError($"Error executing command '{command}': {ex.Message}");
+                return null;
+            }
+        }
     }
 }

@@ -10,7 +10,7 @@ class Program
         string? DestinationDirectory = null;
         string IncludeGitHubWorkflow = "Complete"; // Default value
         string BranchName = "converted-package"; // Default value
-        string? BaseBranch = null; // Default value (null means use orphan branch)
+        bool PreserveHistory = false; // Default value (false means use orphan branch)
 
         for (int i = 0; i < args.Length; i++)
         {
@@ -34,16 +34,15 @@ class Program
                 BranchName = args[i + 1];
                 i++; // Skip the value
             }
-            else if (args[i] == "--baseBranch" && i + 1 < args.Length)
+            else if (args[i] == "--preserveHistory")
             {
-                BaseBranch = args[i + 1];
-                i++; // Skip the value
+                PreserveHistory = true;
             }
         }
 
         if (string.IsNullOrEmpty(SourceDirectory))
         {
-            Console.WriteLine("Usage: SLC-Package-Converter.exe --sourceDir <SourceDirectory> [--destDir <DestinationDirectory>] [--includeGitHubWorkflow <None|Basic|Complete>] [--branchName <BranchName>] [--baseBranch <BaseBranch>]");
+            Console.WriteLine("Usage: SLC-Package-Converter.exe --sourceDir <SourceDirectory> [--destDir <DestinationDirectory>] [--includeGitHubWorkflow <None|Basic|Complete>] [--branchName <BranchName>] [--preserveHistory]");
             return;
         }
 
@@ -112,7 +111,7 @@ class Program
             // If branch mode is enabled, create a branch and copy files
             if (branchMode)
             {
-                BranchManager.CreateBranchAndCopyFiles(SourceDirectory, DestinationDirectory, BranchName, BaseBranch);
+                BranchManager.CreateBranchAndCopyFiles(SourceDirectory, DestinationDirectory, BranchName, PreserveHistory);
             }
         }
         catch (DirectoryNotFoundException ex)
