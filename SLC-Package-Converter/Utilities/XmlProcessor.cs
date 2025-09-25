@@ -44,10 +44,8 @@ namespace SLC_Package_Converter.Utilities
                             continue;
                         }
 
-                        int exeIndex = 0; // Track EXE block index for unique naming
                         foreach (var exe in exeElements)
                         {
-                            exeIndex++;
                             var projectValue = exe.Element(ns + "Value")?.Value;
                             if (projectValue != null && projectValue.Contains("[Project:"))
                             {
@@ -58,12 +56,6 @@ namespace SLC_Package_Converter.Utilities
                                     @"_\d+$", // Matches an underscore followed by one or more digits at the end of the string
                                     string.Empty // Replaces the match with an empty string
                                 );
-
-                                // Add suffix for multiple EXE blocks to ensure unique names
-                                if (exeElements.Count() > 1)
-                                {
-                                    newName = $"{newName}_Exe{exeIndex}";
-                                }
 
                                 // Track the processed XML file
                                 processedFiles.Add(file);
