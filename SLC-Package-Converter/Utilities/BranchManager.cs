@@ -75,7 +75,7 @@
             try
             {
                 // Use git command to get current branch name
-                var result = CommandExecutor.ExecuteCommandWithOutput("git branch --show-current");
+                var result = CommandExecutor.ExecuteCommand("git branch --show-current", returnOutput: true);
                 return result?.Trim();
             }
             catch

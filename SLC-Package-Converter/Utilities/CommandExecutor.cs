@@ -22,57 +22,7 @@
             }
         }
 
-        public static void ExecuteCommand(string command)
-        {
-            try
-            {
-                var processStartInfo = new System.Diagnostics.ProcessStartInfo
-                {
-                    FileName = "cmd.exe",
-                    Arguments = $"/c {command}",
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    UseShellExecute = false,
-                    CreateNoWindow = true
-                };
-
-                using (var process = System.Diagnostics.Process.Start(processStartInfo))
-                {
-                    if (process == null)
-                    {
-                        Logger.LogError($"Failed to start process for command '{command}'");
-                        return;
-                    }
-
-                    using (var reader = process.StandardOutput)
-                    {
-                        string output = reader.ReadToEnd();
-                        if (!string.IsNullOrEmpty(output))
-                        {
-                            // Logger.LogInfo(output);
-                        }
-                    }
-
-                    using (var reader = process.StandardError)
-                    {
-                        string error = reader.ReadToEnd();
-                        if (!string.IsNullOrEmpty(error))
-                        {
-                            Logger.LogError(error);
-                        }
-                    }
-
-                    process.WaitForExit();
-                }
-            }
-            catch (Exception ex)
-            {
-                Logger.LogError($"Error executing command '{command}': {ex.Message}");
-                throw;
-            }
-        }
-
-        public static string? ExecuteCommandWithOutput(string command)
+        public static string? ExecuteCommand(string command, bool returnOutput = false)
         {
             try
             {
@@ -97,15 +47,41 @@
                     using (var reader = process.StandardOutput)
                     {
                         string output = reader.ReadToEnd();
+                        
+                        using (var errorReader = process.StandardError)
+                        {
+                            string error = errorReader.ReadToEnd();
+                            if (!string.IsNullOrEmpty(error))
+                            {
+                                Logger.LogError(error);
+                            }
+                        }
+
                         process.WaitForExit();
-                        return output;
+                        
+                        if (returnOutput)
+                        {
+                            return output;
+                        }
+                        else
+                        {
+                            if (!string.IsNullOrEmpty(output))
+                            {
+                                // Logger.LogInfo(output);
+                            }
+                            return null;
+                        }
                     }
                 }
             }
             catch (Exception ex)
             {
                 Logger.LogError($"Error executing command '{command}': {ex.Message}");
-                return null;
+                if (returnOutput)
+                {
+                    return null;
+                }
+                throw;
             }
         }
     }
