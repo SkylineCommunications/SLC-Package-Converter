@@ -22,7 +22,7 @@
             }
         }
 
-        public static void ExecuteCommand(string command)
+        public static string? ExecuteCommand(string command, bool returnOutput = false)
         {
             try
             {
@@ -41,33 +41,46 @@
                     if (process == null)
                     {
                         Logger.LogError($"Failed to start process for command '{command}'");
-                        return;
+                        return null;
                     }
 
                     using (var reader = process.StandardOutput)
                     {
                         string output = reader.ReadToEnd();
-                        if (!string.IsNullOrEmpty(output))
+                        
+                        using (var errorReader = process.StandardError)
                         {
-                            // Logger.LogInfo(output);
+                            string error = errorReader.ReadToEnd();
+                            if (!string.IsNullOrEmpty(error))
+                            {
+                                Logger.LogError(error);
+                            }
+                        }
+
+                        process.WaitForExit();
+                        
+                        if (returnOutput)
+                        {
+                            return output;
+                        }
+                        else
+                        {
+                            if (!string.IsNullOrEmpty(output))
+                            {
+                                // Logger.LogInfo(output);
+                            }
+                            return null;
                         }
                     }
-
-                    using (var reader = process.StandardError)
-                    {
-                        string error = reader.ReadToEnd();
-                        if (!string.IsNullOrEmpty(error))
-                        {
-                            Logger.LogError(error);
-                        }
-                    }
-
-                    process.WaitForExit();
                 }
             }
             catch (Exception ex)
             {
                 Logger.LogError($"Error executing command '{command}': {ex.Message}");
+                if (returnOutput)
+                {
+                    return null;
+                }
                 throw;
             }
         }
