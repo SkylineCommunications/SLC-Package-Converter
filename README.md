@@ -9,6 +9,9 @@
 - Merges `.csproj` files with the correct references and dependencies.
 - Copies necessary files and folders while respecting exclusion rules.
 - Automatically creates a new Git branch (`converted-package`) if no destination is specified.
+- **Project names are automatically derived from the source**: 
+  - Automation Script projects use the project name extracted from the XML file's `[Project:...]` reference
+  - The DataMiner Package Project uses the same name as the source solution file
 
 ## 🚀 Usage
 
