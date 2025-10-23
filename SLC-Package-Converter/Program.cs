@@ -90,7 +90,7 @@ class Program
                 string currentSlnNameWithoutExtension = Path.GetFileNameWithoutExtension(currentSln);
                 
                 // Use custom package name if provided, otherwise use source solution name
-                string packageProjectName = !string.IsNullOrEmpty(PackageName) ? PackageName : currentSlnNameWithoutExtension;
+                string packageProjectName = PackageName ?? currentSlnNameWithoutExtension;
                 
                 DestinationDirectory = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
                 Logger.LogInfo("Destination Directory not specified. Creating a new branch with the new project.");
