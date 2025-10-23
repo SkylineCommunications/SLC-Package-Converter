@@ -54,7 +54,7 @@ class Program
             return;
         }
 
-        string[] ExcludedDirs = { "CompanionFiles", "Internal", "Documentation" };
+        string[] ExcludedDirs = { "CompanionFiles", "Internal", "Documentation", "AutomationScript_ClassLibrary" };
         string[] ExcludedSubDirs = { };
         string[] ExcludedFiles = { "AssemblyInfo.cs", "Jenkinsfile", "Directory.Build.props", "Directory.Build.targets" };
         bool branchMode = false;

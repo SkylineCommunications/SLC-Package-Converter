@@ -211,11 +211,21 @@ namespace SLC_Package_Converter.Utilities
                     destinationProject.Add(projectReferenceGroup);
                 }
 
+                bool hasAutomationScriptClassLibraryReference = false;
+
                 foreach (var projectReference in sourceProjectReferences)
                 {
                     var includeAttribute = projectReference.Attribute("Include");
                     if (includeAttribute != null)
                     {
+                        // Check if this references AutomationScript_ClassLibrary
+                        if (includeAttribute.Value.Contains("AutomationScript_ClassLibrary", StringComparison.OrdinalIgnoreCase))
+                        {
+                            hasAutomationScriptClassLibraryReference = true;
+                            // Skip this reference - it will be replaced with NuGet package
+                            continue;
+                        }
+
                         // Apply regex to remove "_int" from the Include path
                         string updatedInclude = Regex.Replace(
                             includeAttribute.Value,
@@ -234,6 +244,21 @@ namespace SLC_Package_Converter.Utilities
                     else
                     {
                         projectReferenceGroup.Add(new XElement(projectReference));
+                    }
+                }
+
+                // If AutomationScript_ClassLibrary was referenced, add the NuGet package instead
+                if (hasAutomationScriptClassLibraryReference)
+                {
+                    var nugetPackageName = "Skyline.DataMiner.Core.DataMinerSystem.Automation";
+                    var existingNugetReference = packageReferenceGroup.Elements("PackageReference")
+                        .FirstOrDefault(e => e.Attribute("Include")?.Value == nugetPackageName);
+                    
+                    if (existingNugetReference == null)
+                    {
+                        var nugetReference = new XElement("PackageReference", new XAttribute("Include", nugetPackageName));
+                        packageReferenceGroup.Add(nugetReference);
+                        Logger.LogInfo($"Replaced AutomationScript_ClassLibrary reference with NuGet package {nugetPackageName}");
                     }
                 }
 
