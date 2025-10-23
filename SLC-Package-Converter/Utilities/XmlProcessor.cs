@@ -199,7 +199,11 @@ namespace SLC_Package_Converter.Utilities
                 {
                     var existingPackageReference = packageReferenceGroup.Elements("PackageReference")
                         .FirstOrDefault(e => e.Attribute("Include")?.Value == packageReference.Attribute("Include")?.Value);
-                    packageReferenceGroup.Add(new XElement(packageReference));
+                    
+                    if (existingPackageReference == null)
+                    {
+                        packageReferenceGroup.Add(new XElement(packageReference));
+                    }
                 }
 
                 // Merge ProjectReference elements
