@@ -89,7 +89,7 @@ class Program
                 // Command to create a new project and solution in the destination directory
                 string createProjectCommand =
                     $"cd \"{DestinationDirectory}\" && " +
-                    $"dotnet new dataminer-package-project -o \"{currentSlnNameWithoutExtension}\" -auth \"\" -cdp true -I {IncludeGitHubWorkflow} --force && " +
+                    $"dotnet new dataminer-package-project -o \"{currentSlnNameWithoutExtension}\" -n \"{currentSlnNameWithoutExtension}\" -auth \"\" -cdp true -I {IncludeGitHubWorkflow} --force && " +
                     $"dotnet new sln -n \"{currentSlnNameWithoutExtension}\" && " +
                     $"dotnet sln add \"{currentSlnNameWithoutExtension}/{currentSlnNameWithoutExtension}.csproj\"";
                 CommandExecutor.ExecuteCommand(createProjectCommand);
