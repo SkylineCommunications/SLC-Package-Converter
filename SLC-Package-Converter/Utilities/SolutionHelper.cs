@@ -60,7 +60,8 @@ namespace SLC_Package_Converter.Utilities
                     string newSolutionPath = Path.Combine(directory, newSolutionFileName);
                     
                     Logger.LogInfo($"Creating new empty solution file: {newSolutionPath}");
-                    File.WriteAllText(newSolutionPath, string.Empty);
+                    // Use UTF-8 without BOM for .sln files (Visual Studio standard)
+                    File.WriteAllText(newSolutionPath, string.Empty, new System.Text.UTF8Encoding(false));
                     
                     return newSolutionPath;
                 }
@@ -115,7 +116,8 @@ namespace SLC_Package_Converter.Utilities
                 }
 
                 // Write updated lines back to the destination solution file
-                File.WriteAllLines(destSlnFile, destLines);
+                // Use UTF-8 without BOM for .sln files (Visual Studio standard)
+                File.WriteAllLines(destSlnFile, destLines, new System.Text.UTF8Encoding(false));
 
                 Logger.LogInfo("Shared project references successfully added to the destination solution file.");
             }
