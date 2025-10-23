@@ -245,8 +245,20 @@ namespace SLC_Package_Converter.Utilities
                     destinationProject.Add(referenceGroup);
                 }
 
+                bool hasDataMinerFilesReferences = false;
                 foreach (var reference in sourceReferences)
                 {
+                    // Check if the reference has a HintPath pointing to C:\Skyline DataMiner\Files\
+                    var hintPath = reference.Element(ns + "HintPath")?.Value ?? reference.Element("HintPath")?.Value;
+                    if (!string.IsNullOrEmpty(hintPath) && hintPath.Contains(@"C:\Skyline DataMiner\Files\", StringComparison.OrdinalIgnoreCase))
+                    {
+                        // Exclude this reference and log it
+                        string referenceName = reference.Attribute("Include")?.Value ?? "Unknown";
+                        Logger.LogInfo($"Excluding reference '{referenceName}' with HintPath pointing to DataMiner Files directory. It will be replaced by the Skyline.DataMiner.Dev.Automation NuGet package.");
+                        hasDataMinerFilesReferences = true;
+                        continue;
+                    }
+
                     var existingReference = referenceGroup.Elements("Reference")
                         .FirstOrDefault(e => e.Attribute("Include")?.Value == reference.Attribute("Include")?.Value);
                     if (existingReference != null)
@@ -256,6 +268,24 @@ namespace SLC_Package_Converter.Utilities
                     else
                     {
                         referenceGroup.Add(new XElement(reference));
+                    }
+                }
+
+                // Add Skyline.DataMiner.Dev.Automation NuGet package if DataMiner Files references were excluded
+                if (hasDataMinerFilesReferences)
+                {
+                    var automationPackageReference = new XElement("PackageReference",
+                        new XAttribute("Include", "Skyline.DataMiner.Dev.Automation"),
+                        new XAttribute("Version", "10.4.0.22"));
+
+                    // Check if this package reference already exists
+                    var existingAutomationPackage = packageReferenceGroup.Elements("PackageReference")
+                        .FirstOrDefault(e => e.Attribute("Include")?.Value == "Skyline.DataMiner.Dev.Automation");
+
+                    if (existingAutomationPackage == null)
+                    {
+                        packageReferenceGroup.Add(automationPackageReference);
+                        Logger.LogInfo("Added NuGet package 'Skyline.DataMiner.Dev.Automation' version '10.4.0.22' as a replacement for DataMiner Files references.");
                     }
                 }
 
