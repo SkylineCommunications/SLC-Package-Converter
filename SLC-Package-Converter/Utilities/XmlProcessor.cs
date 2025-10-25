@@ -93,8 +93,10 @@ namespace SLC_Package_Converter.Utilities
                                     File.Delete(csFilePath);
                                 }
 
-                                // Write the XML content to the destination directory
-                                File.WriteAllText(Path.Combine(projectDirectory, $"{newName}.xml"), File.ReadAllText(file).Replace($"Project:{projectName}", $"Project:{newName}"));
+                                // Write the XML content to the destination directory with UTF-8 BOM encoding
+                                // UTF-8 BOM is required for DataMiner automation scripts
+                                var xmlContent = File.ReadAllText(file).Replace($"Project:{projectName}", $"Project:{newName}");
+                                File.WriteAllText(Path.Combine(projectDirectory, $"{newName}.xml"), xmlContent, new System.Text.UTF8Encoding(true));
 
                                 // Merge the .csproj files
                                 MergeCsprojFiles(Path.Combine(Path.Combine(Path.GetDirectoryName(file)!, projectName), $"{projectName}.csproj"), Path.Combine(projectDirectory, $"{newName}.csproj"));
