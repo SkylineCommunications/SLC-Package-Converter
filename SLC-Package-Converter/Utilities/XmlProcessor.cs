@@ -267,8 +267,7 @@ namespace SLC_Package_Converter.Utilities
                 // Remove xmlns attribute from the saved .csproj file
                 string xmlContent = File.ReadAllText(destinationCsprojPath);
                 xmlContent = Regex.Replace(xmlContent, @"\sxmlns=""[^""]+""", ""); // Remove xmlns attribute
-                // Note: .csproj files use UTF-8 without BOM (MSBuild standard), unlike automation script XML files which require BOM for DataMiner
-                File.WriteAllText(destinationCsprojPath, xmlContent, new System.Text.UTF8Encoding(false));
+                File.WriteAllText(destinationCsprojPath, xmlContent);
             }
             catch (Exception ex)
             {

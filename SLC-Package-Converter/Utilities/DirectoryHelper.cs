@@ -12,8 +12,7 @@ namespace SLC_Package_Converter.Utilities
             {
                 var lines = File.ReadAllLines(sourcePath);
                 var filteredLines = lines.Where(line => !line.Contains("AssemblyInfo.cs", StringComparison.OrdinalIgnoreCase));
-                // Use UTF-8 without BOM for .csproj files (MSBuild standard)
-                File.WriteAllLines(destPath, filteredLines, new System.Text.UTF8Encoding(false));
+                File.WriteAllLines(destPath, filteredLines);
             }
             catch (Exception ex)
             {
