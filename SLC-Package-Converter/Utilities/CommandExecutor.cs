@@ -7,11 +7,8 @@
         {
             try
             {
-                // Extract the project name from the path (in case projectName is a full path)
-                string actualProjectName = Path.GetFileName(projectName);
-                
                 // Run the dotnet new command to create a new project
-                string createProjectCommand = $"dotnet new {templateName} -o \"{projectName}\" -n \"{actualProjectName}\" -auth \"\" --force";
+                string createProjectCommand = $"dotnet new {templateName} -o \"{projectName}\" -auth \"\" --force";
                 ExecuteCommand(createProjectCommand);
 
                 // Run the dotnet sln command to add the project to the solution
