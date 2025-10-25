@@ -104,7 +104,7 @@ class Program
                     $"cd \"{DestinationDirectory}\" && " +
                     $"dotnet new dataminer-package-project -o \"{packageProjectName}\" -n \"{packageProjectName}\" -auth \"\" -cdp true -I {IncludeGitHubWorkflow} --force && " +
                     $"dotnet new sln -n \"{packageProjectName}\" && " +
-                    $"dotnet sln \"{packageProjectName}.sln\" add \"{packageProjectName}/{packageProjectName}.csproj\"";
+                    $"dotnet sln add \"{packageProjectName}/{packageProjectName}.csproj\"";
                 CommandExecutor.ExecuteCommand(createProjectCommand);
 
                 branchMode = true; // Enable branch mode
