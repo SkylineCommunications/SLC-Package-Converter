@@ -202,6 +202,21 @@ namespace SLC_Package_Converter.Utilities
                     packageReferenceGroup.Add(new XElement(packageReference));
                 }
 
+                // Add Skyline.DataMiner.Utils.SecureCoding.Analyzers package if not already present
+                var secureCodeAnalyzerReference = packageReferenceGroup.Elements("PackageReference")
+                    .FirstOrDefault(e => e.Attribute("Include")?.Value == "Skyline.DataMiner.Utils.SecureCoding.Analyzers");
+                
+                if (secureCodeAnalyzerReference == null)
+                {
+                    var analyzerPackage = new XElement("PackageReference",
+                        new XAttribute("Include", "Skyline.DataMiner.Utils.SecureCoding.Analyzers"),
+                        new XAttribute("Version", "2.2.1"),
+                        new XElement("IncludeAssets", "runtime; build; native; contentfiles; analyzers; buildtransitive"),
+                        new XElement("PrivateAssets", "all")
+                    );
+                    packageReferenceGroup.Add(analyzerPackage);
+                }
+
                 // Merge ProjectReference elements
                 XElement? projectReferenceGroup = destinationItemGroups.FirstOrDefault(ig => ig.Elements("ProjectReference").Any());
 
