@@ -202,8 +202,19 @@ namespace SLC_Package_Converter.Utilities
                     destinationProject.Add(packageReferenceGroup);
                 }
 
+                bool hasSlcLibAutomationReference = false;
+
                 foreach (var packageReference in sourcePackageReferences)
                 {
+                    // Check if this is SLC.Lib.Automation (obsolete package)
+                    var includeAttribute = packageReference.Attribute("Include");
+                    if (includeAttribute != null && includeAttribute.Value.Equals("SLC.Lib.Automation", StringComparison.OrdinalIgnoreCase))
+                    {
+                        hasSlcLibAutomationReference = true;
+                        // Skip this reference - it will be replaced with NuGet package
+                        continue;
+                    }
+
                     var existingPackageReference = packageReferenceGroup.Elements("PackageReference")
                         .FirstOrDefault(e => e.Attribute("Include")?.Value == packageReference.Attribute("Include")?.Value);
                     packageReferenceGroup.Add(new XElement(packageReference));
@@ -271,7 +282,7 @@ namespace SLC_Package_Converter.Utilities
                     {
                         // Exclude this reference and log it
                         string referenceName = reference.Attribute("Include")?.Value ?? "Unknown";
-                        Logger.LogInfo($"Excluding reference '{referenceName}' with HintPath pointing to DataMiner Files directory. It will be replaced by NuGet packages.");
+                        Logger.LogInfo($"Excluding reference '{referenceName}' with HintPath pointing to DataMiner Files directory. It will be replaced by the {AutomationPackageName} NuGet package.");
                         hasDataMinerFilesReferences = true;
                         continue;
                     }
@@ -296,10 +307,15 @@ namespace SLC_Package_Converter.Utilities
                 xmlContent = Regex.Replace(xmlContent, @"\sxmlns=""[^""]+""", ""); // Remove xmlns attribute
                 File.WriteAllText(destinationCsprojPath, xmlContent);
 
-                // If DataMiner Files references were excluded, add the Dev.Automation NuGet packages using dotnet add
+                // If DataMiner Files references were excluded, add the Dev.Automation NuGet package using dotnet add
                 if (hasDataMinerFilesReferences)
                 {
                     AddDevAutomationPackage(destinationCsprojPath);
+                }
+
+                // If SLC.Lib.Automation was referenced, add the NuGet package instead using dotnet add
+                if (hasSlcLibAutomationReference)
+                {
                     AddDataMinerSystemAutomationPackage(destinationCsprojPath);
                 }
 
