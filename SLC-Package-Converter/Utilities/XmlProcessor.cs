@@ -98,8 +98,10 @@ namespace SLC_Package_Converter.Utilities
                                     File.Delete(csFilePath);
                                 }
 
-                                // Write the XML content to the destination directory
-                                File.WriteAllText(Path.Combine(projectDirectory, $"{newName}.xml"), File.ReadAllText(file).Replace($"Project:{projectName}", $"Project:{newName}"));
+                                // Write the XML content to the destination directory with UTF-8 BOM encoding
+                                // UTF-8 BOM is required for DataMiner automation scripts
+                                var xmlContent = File.ReadAllText(file).Replace($"Project:{projectName}", $"Project:{newName}");
+                                File.WriteAllText(Path.Combine(projectDirectory, $"{newName}.xml"), xmlContent, new System.Text.UTF8Encoding(true));
 
                                 // Merge the .csproj files
                                 MergeCsprojFiles(Path.Combine(Path.Combine(Path.GetDirectoryName(file)!, projectName), $"{projectName}.csproj"), Path.Combine(projectDirectory, $"{newName}.csproj"));
@@ -216,11 +218,21 @@ namespace SLC_Package_Converter.Utilities
                     destinationProject.Add(projectReferenceGroup);
                 }
 
+                bool hasAutomationScriptClassLibraryReference = false;
+
                 foreach (var projectReference in sourceProjectReferences)
                 {
                     var includeAttribute = projectReference.Attribute("Include");
                     if (includeAttribute != null)
                     {
+                        // Check if this references AutomationScript_ClassLibrary
+                        if (includeAttribute.Value.Contains("AutomationScript_ClassLibrary", StringComparison.OrdinalIgnoreCase))
+                        {
+                            hasAutomationScriptClassLibraryReference = true;
+                            // Skip this reference - it will be replaced with NuGet package
+                            continue;
+                        }
+
                         // Apply regex to remove "_int" from the Include path
                         string updatedInclude = Regex.Replace(
                             includeAttribute.Value,
@@ -301,10 +313,53 @@ namespace SLC_Package_Converter.Utilities
                 string xmlContent = File.ReadAllText(destinationCsprojPath);
                 xmlContent = Regex.Replace(xmlContent, @"\sxmlns=""[^""]+""", ""); // Remove xmlns attribute
                 File.WriteAllText(destinationCsprojPath, xmlContent);
+
+                // If AutomationScript_ClassLibrary was referenced, add the NuGet package instead using dotnet add
+                if (hasAutomationScriptClassLibraryReference)
+                {
+                    AddDataMinerSystemAutomationPackage(destinationCsprojPath);
+                }
+
+                // Add Skyline.DataMiner.Utils.SecureCoding.Analyzers package using dotnet command to get latest version
+                AddSecureCodingAnalyzersPackage(destinationCsprojPath);
             }
             catch (Exception ex)
             {
                 Logger.LogError($"Error merging .csproj files: {ex.Message}");
+                throw;
+            }
+        }
+
+        // Adds the SecureCoding.Analyzers package to a project using dotnet add command.
+        private static void AddSecureCodingAnalyzersPackage(string csprojPath)
+        {
+            try
+            {
+                // Use dotnet add package to add the latest version (updates if already present)
+                string addPackageCommand = $"dotnet add \"{csprojPath}\" package Skyline.DataMiner.Utils.SecureCoding.Analyzers --source https://api.nuget.org/v3/index.json";
+                CommandExecutor.ExecuteCommand(addPackageCommand);
+                Logger.LogInfo("SecureCoding.Analyzers package added/updated successfully.");
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError($"Error adding SecureCoding.Analyzers package: {ex.Message}");
+                throw;
+            }
+        }
+
+        // Adds the Skyline.DataMiner.Core.DataMinerSystem.Automation package to a project using dotnet add command.
+        private static void AddDataMinerSystemAutomationPackage(string csprojPath)
+        {
+            try
+            {
+                // Use dotnet add package to add the latest version (updates if already present)
+                string addPackageCommand = $"dotnet add \"{csprojPath}\" package Skyline.DataMiner.Core.DataMinerSystem.Automation --source https://api.nuget.org/v3/index.json";
+                CommandExecutor.ExecuteCommand(addPackageCommand);
+                Logger.LogInfo("Replaced AutomationScript_ClassLibrary reference with NuGet package Skyline.DataMiner.Core.DataMinerSystem.Automation");
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError($"Error adding DataMinerSystem.Automation package: {ex.Message}");
                 throw;
             }
         }
