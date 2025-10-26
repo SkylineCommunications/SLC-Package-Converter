@@ -271,7 +271,7 @@ namespace SLC_Package_Converter.Utilities
                     {
                         // Exclude this reference and log it
                         string referenceName = reference.Attribute("Include")?.Value ?? "Unknown";
-                        Logger.LogInfo($"Excluding reference '{referenceName}' with HintPath pointing to DataMiner Files directory. It will be replaced by the {AutomationPackageName} NuGet package.");
+                        Logger.LogInfo($"Excluding reference '{referenceName}' with HintPath pointing to DataMiner Files directory. It will be replaced by NuGet packages.");
                         hasDataMinerFilesReferences = true;
                         continue;
                     }
@@ -296,10 +296,11 @@ namespace SLC_Package_Converter.Utilities
                 xmlContent = Regex.Replace(xmlContent, @"\sxmlns=""[^""]+""", ""); // Remove xmlns attribute
                 File.WriteAllText(destinationCsprojPath, xmlContent);
 
-                // If DataMiner Files references were excluded, add the Dev.Automation NuGet package using dotnet add
+                // If DataMiner Files references were excluded, add the Dev.Automation NuGet packages using dotnet add
                 if (hasDataMinerFilesReferences)
                 {
                     AddDevAutomationPackage(destinationCsprojPath);
+                    AddDataMinerSystemAutomationPackage(destinationCsprojPath);
                 }
 
                 // If AutomationScript_ClassLibrary was referenced, add the NuGet package instead using dotnet add
