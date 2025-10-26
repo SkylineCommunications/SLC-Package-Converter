@@ -12,7 +12,7 @@
                 ExecuteCommand(createProjectCommand);
 
                 // Run the dotnet sln command to add the project to the solution
-                string addProjectCommand = $"dotnet sln {slnFile} add \"{projectName}\"";
+                string addProjectCommand = $"dotnet sln \"{slnFile}\" add \"{projectName}\"";
                 ExecuteCommand(addProjectCommand);
             }
             catch (Exception ex)

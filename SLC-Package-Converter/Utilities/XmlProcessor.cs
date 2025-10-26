@@ -93,8 +93,10 @@ namespace SLC_Package_Converter.Utilities
                                     File.Delete(csFilePath);
                                 }
 
-                                // Write the XML content to the destination directory
-                                File.WriteAllText(Path.Combine(projectDirectory, $"{newName}.xml"), File.ReadAllText(file).Replace($"Project:{projectName}", $"Project:{newName}"));
+                                // Write the XML content to the destination directory with UTF-8 BOM encoding
+                                // UTF-8 BOM is required for DataMiner automation scripts
+                                var xmlContent = File.ReadAllText(file).Replace($"Project:{projectName}", $"Project:{newName}");
+                                File.WriteAllText(Path.Combine(projectDirectory, $"{newName}.xml"), xmlContent, new System.Text.UTF8Encoding(true));
 
                                 // Merge the .csproj files
                                 MergeCsprojFiles(Path.Combine(Path.Combine(Path.GetDirectoryName(file)!, projectName), $"{projectName}.csproj"), Path.Combine(projectDirectory, $"{newName}.csproj"));
@@ -295,10 +297,30 @@ namespace SLC_Package_Converter.Utilities
                 string xmlContent = File.ReadAllText(destinationCsprojPath);
                 xmlContent = Regex.Replace(xmlContent, @"\sxmlns=""[^""]+""", ""); // Remove xmlns attribute
                 File.WriteAllText(destinationCsprojPath, xmlContent);
+
+                // Add Skyline.DataMiner.Utils.SecureCoding.Analyzers package using dotnet command to get latest version
+                AddSecureCodingAnalyzersPackage(destinationCsprojPath);
             }
             catch (Exception ex)
             {
                 Logger.LogError($"Error merging .csproj files: {ex.Message}");
+                throw;
+            }
+        }
+
+        // Adds the SecureCoding.Analyzers package to a project using dotnet add command.
+        private static void AddSecureCodingAnalyzersPackage(string csprojPath)
+        {
+            try
+            {
+                // Use dotnet add package to add the latest version (updates if already present)
+                string addPackageCommand = $"dotnet add \"{csprojPath}\" package Skyline.DataMiner.Utils.SecureCoding.Analyzers --source https://api.nuget.org/v3/index.json";
+                CommandExecutor.ExecuteCommand(addPackageCommand);
+                Logger.LogInfo("SecureCoding.Analyzers package added/updated successfully.");
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError($"Error adding SecureCoding.Analyzers package: {ex.Message}");
                 throw;
             }
         }

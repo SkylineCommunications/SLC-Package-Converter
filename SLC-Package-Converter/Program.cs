@@ -8,6 +8,7 @@ class Program
         // Parse command-line arguments
         string? SourceDirectory = null;
         string? DestinationDirectory = null;
+        bool UsePackageNaming = false; // Optional: use "Package" naming convention
         string IncludeGitHubWorkflow = "Complete"; // Default value
         string BranchName = "converted-package"; // Default value
         bool PreserveHistory = false; // Default value (false means use orphan branch)
@@ -23,6 +24,10 @@ class Program
             {
                 DestinationDirectory = args[i + 1];
                 i++; // Skip the value
+            }
+            else if (args[i] == "--usePackageNaming")
+            {
+                UsePackageNaming = true;
             }
             else if (args[i] == "--includeGitHubWorkflow" && i + 1 < args.Length)
             {
@@ -42,7 +47,7 @@ class Program
 
         if (string.IsNullOrEmpty(SourceDirectory))
         {
-            Console.WriteLine("Usage: SLC-Package-Converter.exe --sourceDir <SourceDirectory> [--destDir <DestinationDirectory>] [--includeGitHubWorkflow <None|Basic|Complete>] [--branchName <BranchName>] [--preserveHistory]");
+            Console.WriteLine("Usage: SLC-Package-Converter.exe --sourceDir <SourceDirectory> [--destDir <DestinationDirectory>] [--usePackageNaming] [--includeGitHubWorkflow <None|Basic|Complete>] [--branchName <BranchName>] [--preserveHistory]");
             return;
         }
 
@@ -82,6 +87,14 @@ class Program
                 }
 
                 string currentSlnNameWithoutExtension = Path.GetFileNameWithoutExtension(currentSln);
+                
+                // Use "Package" naming if --usePackageNaming flag is set and solution name is "AutomationScript"
+                string packageProjectName = currentSlnNameWithoutExtension;
+                if (UsePackageNaming && currentSlnNameWithoutExtension.Equals("AutomationScript", StringComparison.OrdinalIgnoreCase))
+                {
+                    packageProjectName = "Package";
+                }
+                
                 DestinationDirectory = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
                 Logger.LogInfo("Destination Directory not specified. Creating a new branch with the new project.");
                 Directory.CreateDirectory(DestinationDirectory);
@@ -89,9 +102,9 @@ class Program
                 // Command to create a new project and solution in the destination directory
                 string createProjectCommand =
                     $"cd \"{DestinationDirectory}\" && " +
-                    $"dotnet new dataminer-package-project -o \"{currentSlnNameWithoutExtension}\" -auth \"\" -cdp true -I {IncludeGitHubWorkflow} --force && " +
-                    $"dotnet new sln -n \"{currentSlnNameWithoutExtension}\" && " +
-                    $"dotnet sln add \"{currentSlnNameWithoutExtension}/{currentSlnNameWithoutExtension}.csproj\"";
+                    $"dotnet new dataminer-package-project -o \"{packageProjectName}\" -n \"{packageProjectName}\" -auth \"\" -cdp true -I {IncludeGitHubWorkflow} --force && " +
+                    $"dotnet new sln -n \"{packageProjectName}\" && " +
+                    $"dotnet sln add \"{packageProjectName}/{packageProjectName}.csproj\"";
                 CommandExecutor.ExecuteCommand(createProjectCommand);
 
                 branchMode = true; // Enable branch mode
