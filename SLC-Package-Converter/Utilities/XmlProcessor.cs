@@ -202,21 +202,6 @@ namespace SLC_Package_Converter.Utilities
                     packageReferenceGroup.Add(new XElement(packageReference));
                 }
 
-                // Add Skyline.DataMiner.Utils.SecureCoding.Analyzers package if not already present
-                var secureCodeAnalyzerReference = packageReferenceGroup.Elements("PackageReference")
-                    .FirstOrDefault(e => e.Attribute("Include")?.Value == "Skyline.DataMiner.Utils.SecureCoding.Analyzers");
-                
-                if (secureCodeAnalyzerReference == null)
-                {
-                    var analyzerPackage = new XElement("PackageReference",
-                        new XAttribute("Include", "Skyline.DataMiner.Utils.SecureCoding.Analyzers"),
-                        new XAttribute("Version", "2.2.1"),
-                        new XElement("IncludeAssets", "runtime; build; native; contentfiles; analyzers; buildtransitive"),
-                        new XElement("PrivateAssets", "all")
-                    );
-                    packageReferenceGroup.Add(analyzerPackage);
-                }
-
                 // Merge ProjectReference elements
                 XElement? projectReferenceGroup = destinationItemGroups.FirstOrDefault(ig => ig.Elements("ProjectReference").Any());
 
@@ -281,10 +266,38 @@ namespace SLC_Package_Converter.Utilities
                 string xmlContent = File.ReadAllText(destinationCsprojPath);
                 xmlContent = Regex.Replace(xmlContent, @"\sxmlns=""[^""]+""", ""); // Remove xmlns attribute
                 File.WriteAllText(destinationCsprojPath, xmlContent);
+
+                // Add Skyline.DataMiner.Utils.SecureCoding.Analyzers package using dotnet command to get latest version
+                AddSecureCodingAnalyzersPackage(destinationCsprojPath);
             }
             catch (Exception ex)
             {
                 Logger.LogError($"Error merging .csproj files: {ex.Message}");
+                throw;
+            }
+        }
+
+        // Adds the SecureCoding.Analyzers package to a project using dotnet add command.
+        private static void AddSecureCodingAnalyzersPackage(string csprojPath)
+        {
+            try
+            {
+                // Check if the package is already present
+                string csprojContent = File.ReadAllText(csprojPath);
+                if (csprojContent.Contains("Skyline.DataMiner.Utils.SecureCoding.Analyzers"))
+                {
+                    Logger.LogInfo("SecureCoding.Analyzers package already present in project.");
+                    return;
+                }
+
+                // Use dotnet add package to add the latest version
+                string addPackageCommand = $"dotnet add \"{csprojPath}\" package Skyline.DataMiner.Utils.SecureCoding.Analyzers --source https://api.nuget.org/v3/index.json";
+                CommandExecutor.ExecuteCommand(addPackageCommand);
+                Logger.LogInfo("SecureCoding.Analyzers package added successfully.");
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError($"Error adding SecureCoding.Analyzers package: {ex.Message}");
                 throw;
             }
         }
