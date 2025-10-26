@@ -282,18 +282,10 @@ namespace SLC_Package_Converter.Utilities
         {
             try
             {
-                // Check if the package is already present
-                string csprojContent = File.ReadAllText(csprojPath);
-                if (csprojContent.Contains("Skyline.DataMiner.Utils.SecureCoding.Analyzers"))
-                {
-                    Logger.LogInfo("SecureCoding.Analyzers package already present in project.");
-                    return;
-                }
-
-                // Use dotnet add package to add the latest version
+                // Use dotnet add package to add the latest version (updates if already present)
                 string addPackageCommand = $"dotnet add \"{csprojPath}\" package Skyline.DataMiner.Utils.SecureCoding.Analyzers --source https://api.nuget.org/v3/index.json";
                 CommandExecutor.ExecuteCommand(addPackageCommand);
-                Logger.LogInfo("SecureCoding.Analyzers package added successfully.");
+                Logger.LogInfo("SecureCoding.Analyzers package added/updated successfully.");
             }
             catch (Exception ex)
             {
