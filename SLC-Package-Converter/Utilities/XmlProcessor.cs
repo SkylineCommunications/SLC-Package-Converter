@@ -288,24 +288,6 @@ namespace SLC_Package_Converter.Utilities
                     }
                 }
 
-                // Add Skyline.DataMiner.Dev.Automation NuGet package if DataMiner Files references were excluded
-                if (hasDataMinerFilesReferences)
-                {
-                    var automationPackageReference = new XElement("PackageReference",
-                        new XAttribute("Include", AutomationPackageName),
-                        new XAttribute("Version", AutomationPackageVersion));
-
-                    // Check if this package reference already exists
-                    var existingAutomationPackage = packageReferenceGroup.Elements("PackageReference")
-                        .FirstOrDefault(e => e.Attribute("Include")?.Value == AutomationPackageName);
-
-                    if (existingAutomationPackage == null)
-                    {
-                        packageReferenceGroup.Add(automationPackageReference);
-                        Logger.LogInfo($"Added NuGet package '{AutomationPackageName}' version '{AutomationPackageVersion}' as a replacement for DataMiner Files references.");
-                    }
-                }
-
                 // Save the merged .csproj file
                 destinationDoc.Save(destinationCsprojPath);
 
@@ -313,6 +295,12 @@ namespace SLC_Package_Converter.Utilities
                 string xmlContent = File.ReadAllText(destinationCsprojPath);
                 xmlContent = Regex.Replace(xmlContent, @"\sxmlns=""[^""]+""", ""); // Remove xmlns attribute
                 File.WriteAllText(destinationCsprojPath, xmlContent);
+
+                // If DataMiner Files references were excluded, add the Dev.Automation NuGet package using dotnet add
+                if (hasDataMinerFilesReferences)
+                {
+                    AddDevAutomationPackage(destinationCsprojPath);
+                }
 
                 // If AutomationScript_ClassLibrary was referenced, add the NuGet package instead using dotnet add
                 if (hasAutomationScriptClassLibraryReference)
@@ -360,6 +348,23 @@ namespace SLC_Package_Converter.Utilities
             catch (Exception ex)
             {
                 Logger.LogError($"Error adding DataMinerSystem.Automation package: {ex.Message}");
+                throw;
+            }
+        }
+
+        // Adds the Skyline.DataMiner.Dev.Automation package to a project using dotnet add command.
+        private static void AddDevAutomationPackage(string csprojPath)
+        {
+            try
+            {
+                // Use dotnet add package with specific version
+                string addPackageCommand = $"dotnet add \"{csprojPath}\" package {AutomationPackageName} --version {AutomationPackageVersion} --source https://api.nuget.org/v3/index.json";
+                CommandExecutor.ExecuteCommand(addPackageCommand);
+                Logger.LogInfo($"Added NuGet package '{AutomationPackageName}' version '{AutomationPackageVersion}' as a replacement for DataMiner Files references.");
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError($"Error adding {AutomationPackageName} package: {ex.Message}");
                 throw;
             }
         }
