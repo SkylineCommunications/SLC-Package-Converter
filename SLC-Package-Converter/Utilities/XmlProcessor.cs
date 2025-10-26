@@ -268,10 +268,30 @@ namespace SLC_Package_Converter.Utilities
                 string xmlContent = File.ReadAllText(destinationCsprojPath);
                 xmlContent = Regex.Replace(xmlContent, @"\sxmlns=""[^""]+""", ""); // Remove xmlns attribute
                 File.WriteAllText(destinationCsprojPath, xmlContent);
+
+                // Add Skyline.DataMiner.Utils.SecureCoding.Analyzers package using dotnet command to get latest version
+                AddSecureCodingAnalyzersPackage(destinationCsprojPath);
             }
             catch (Exception ex)
             {
                 Logger.LogError($"Error merging .csproj files: {ex.Message}");
+                throw;
+            }
+        }
+
+        // Adds the SecureCoding.Analyzers package to a project using dotnet add command.
+        private static void AddSecureCodingAnalyzersPackage(string csprojPath)
+        {
+            try
+            {
+                // Use dotnet add package to add the latest version (updates if already present)
+                string addPackageCommand = $"dotnet add \"{csprojPath}\" package Skyline.DataMiner.Utils.SecureCoding.Analyzers --source https://api.nuget.org/v3/index.json";
+                CommandExecutor.ExecuteCommand(addPackageCommand);
+                Logger.LogInfo("SecureCoding.Analyzers package added/updated successfully.");
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError($"Error adding SecureCoding.Analyzers package: {ex.Message}");
                 throw;
             }
         }
