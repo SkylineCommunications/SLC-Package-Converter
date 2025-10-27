@@ -14,7 +14,8 @@ namespace SLC_Package_Converter.Utilities
 
         // Deprecated/Obsolete packages that are automatically replaced:
         // - SLC.Lib.Automation → Skyline.DataMiner.Core.DataMinerSystem.Automation
-        // - SLC.Lib.Common → Skyline.DataMiner.Core.DataMinerSystem.Common
+        // - SLC.Lib.Common → Skyline.DataMiner.Core.DataMinerSystem.Automation
+        // - SLSRMLibrary → Skyline.DataMiner.Core.SRM
         // - AutomationScript_ClassLibrary (project reference) → Skyline.DataMiner.Core.DataMinerSystem.Automation
         // - References to C:\Skyline DataMiner\Files\ → Skyline.DataMiner.Dev.Automation (version 10.4.0.22)
 
@@ -210,6 +211,7 @@ namespace SLC_Package_Converter.Utilities
 
                 bool hasSlcLibAutomationReference = false;
                 bool hasSlcLibCommonReference = false;
+                bool hasSlSrmLibraryReference = false;
 
                 foreach (var packageReference in sourcePackageReferences)
                 {
@@ -226,6 +228,14 @@ namespace SLC_Package_Converter.Utilities
                     if (includeAttribute != null && includeAttribute.Value.Equals("SLC.Lib.Common", StringComparison.OrdinalIgnoreCase))
                     {
                         hasSlcLibCommonReference = true;
+                        // Skip this reference - it will be replaced with NuGet package
+                        continue;
+                    }
+
+                    // Check if this is SLSRMLibrary (obsolete package)
+                    if (includeAttribute != null && includeAttribute.Value.Equals("SLSRMLibrary", StringComparison.OrdinalIgnoreCase))
+                    {
+                        hasSlSrmLibraryReference = true;
                         // Skip this reference - it will be replaced with NuGet package
                         continue;
                     }
@@ -337,7 +347,13 @@ namespace SLC_Package_Converter.Utilities
                 // If SLC.Lib.Common was referenced, add the NuGet package instead using dotnet add
                 if (hasSlcLibCommonReference)
                 {
-                    AddDataMinerSystemCommonPackage(destinationCsprojPath);
+                    AddDataMinerSystemAutomationPackage(destinationCsprojPath);
+                }
+
+                // If SLSRMLibrary was referenced, add the NuGet package instead using dotnet add
+                if (hasSlSrmLibraryReference)
+                {
+                    AddDataMinerSystemSrmPackage(destinationCsprojPath);
                 }
 
                 // If AutomationScript_ClassLibrary was referenced, add the NuGet package instead using dotnet add
@@ -390,19 +406,19 @@ namespace SLC_Package_Converter.Utilities
             }
         }
 
-        // Adds the Skyline.DataMiner.Core.DataMinerSystem.Common package to a project using dotnet add command.
-        private static void AddDataMinerSystemCommonPackage(string csprojPath)
+        // Adds the Skyline.DataMiner.Core.SRM package to a project using dotnet add command.
+        private static void AddDataMinerSystemSrmPackage(string csprojPath)
         {
             try
             {
                 // Use dotnet add package to add the latest version (updates if already present)
-                string addPackageCommand = $"dotnet add \"{csprojPath}\" package Skyline.DataMiner.Core.DataMinerSystem.Common --source https://api.nuget.org/v3/index.json";
+                string addPackageCommand = $"dotnet add \"{csprojPath}\" package Skyline.DataMiner.Core.SRM --source https://api.nuget.org/v3/index.json";
                 CommandExecutor.ExecuteCommand(addPackageCommand);
-                Logger.LogInfo("Replaced SLC.Lib.Common reference with NuGet package Skyline.DataMiner.Core.DataMinerSystem.Common");
+                Logger.LogInfo("Replaced SLSRMLibrary reference with NuGet package Skyline.DataMiner.Core.SRM");
             }
             catch (Exception ex)
             {
-                Logger.LogError($"Error adding DataMinerSystem.Common package: {ex.Message}");
+                Logger.LogError($"Error adding DataMiner.Core.SRM package: {ex.Message}");
                 throw;
             }
         }

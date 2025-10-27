@@ -9,7 +9,8 @@
 - Merges `.csproj` files with the correct references and dependencies.
 - **Automatically replaces deprecated/obsolete packages and references**:
   - `SLC.Lib.Automation` → `Skyline.DataMiner.Core.DataMinerSystem.Automation`
-  - `SLC.Lib.Common` → `Skyline.DataMiner.Core.DataMinerSystem.Common`
+  - `SLC.Lib.Common` → `Skyline.DataMiner.Core.DataMinerSystem.Automation`
+  - `SLSRMLibrary` → `Skyline.DataMiner.Core.SRM`
   - `AutomationScript_ClassLibrary` project references → `Skyline.DataMiner.Core.DataMinerSystem.Automation`
   - References to `C:\Skyline DataMiner\Files\` → `Skyline.DataMiner.Dev.Automation` (version 10.4.0.22)
 - Copies necessary files and folders while respecting exclusion rules.
