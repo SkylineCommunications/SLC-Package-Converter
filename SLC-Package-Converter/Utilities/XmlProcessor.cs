@@ -44,6 +44,9 @@ namespace SLC_Package_Converter.Utilities
                             continue;
                         }
 
+                        // Track processed project names to detect conflicts
+                        var processedProjectNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
                         foreach (var exe in exeElements)
                         {
                             var projectValue = exe.Element(ns + "Value")?.Value;
@@ -69,6 +72,15 @@ namespace SLC_Package_Converter.Utilities
                                         newName = Regex.Replace(projectName, @"_\d+$", string.Empty);
                                     }
                                 }
+
+                                // Check for duplicate project names after suffix handling
+                                if (processedProjectNames.Contains(newName))
+                                {
+                                    Logger.LogError($"Conflict detected: Multiple EXE blocks would result in the same project name '{newName}'. Original project: '{projectName}'. This typically happens when multiple EXE blocks have different normal numeric suffixes (e.g., _1, _2) that get removed. Skipping this file.");
+                                    fileProcessed = false;
+                                    break; // Exit the foreach loop to skip this entire file
+                                }
+                                processedProjectNames.Add(newName);
 
                                 // Track the processed XML file
                                 processedFiles.Add(file);
