@@ -411,6 +411,18 @@ namespace SLC_Package_Converter.Utilities
                         doc.Save(csprojPath);
                         Logger.LogInfo($"Modified {packageName} to use minimum version constraint [{version},) to allow NuGet resolution of higher versions when needed.");
                     }
+                    else if (versionAttribute != null)
+                    {
+                        Logger.LogWarning($"Package {packageName} found but version is '{versionAttribute.Value}', expected '{version}'. Version constraint not modified.");
+                    }
+                    else
+                    {
+                        Logger.LogWarning($"Package {packageName} found but has no Version attribute. Version constraint not modified.");
+                    }
+                }
+                else
+                {
+                    Logger.LogWarning($"Package {packageName} not found in {csprojPath}. Version constraint not modified.");
                 }
             }
             catch (Exception ex)
