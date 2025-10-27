@@ -12,7 +12,6 @@ namespace SLC_Package_Converter.Utilities
         private const string AutomationPackageName = "Skyline.DataMiner.Dev.Automation";
         private const string AutomationPackageVersion = "10.4.0.22";
         private const string NewtonsoftJsonPackageName = "Newtonsoft.Json";
-        private const string NewtonsoftJsonPackageVersion = "13.0.4";
 
         // Processes XML files in the source directory.
         public static HashSet<string> ProcessXmlFiles(string sourceDir, string destDir, string? slnFile)
@@ -410,10 +409,10 @@ namespace SLC_Package_Converter.Utilities
         {
             try
             {
-                // Use dotnet add package with specific version
-                string addPackageCommand = $"dotnet add \"{csprojPath}\" package {NewtonsoftJsonPackageName} --version {NewtonsoftJsonPackageVersion} --source https://api.nuget.org/v3/index.json";
+                // Use dotnet add package to add the latest version (updates if already present)
+                string addPackageCommand = $"dotnet add \"{csprojPath}\" package {NewtonsoftJsonPackageName} --source https://api.nuget.org/v3/index.json";
                 CommandExecutor.ExecuteCommand(addPackageCommand);
-                Logger.LogInfo($"Added NuGet package '{NewtonsoftJsonPackageName}' version '{NewtonsoftJsonPackageVersion}' as a replacement for Newtonsoft.Json DLL reference.");
+                Logger.LogInfo($"Added latest stable NuGet package '{NewtonsoftJsonPackageName}' as a replacement for Newtonsoft.Json DLL reference.");
             }
             catch (Exception ex)
             {
