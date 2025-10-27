@@ -448,10 +448,12 @@ namespace SLC_Package_Converter.Utilities
         {
             try
             {
-                // Use dotnet add package with specific version
-                string addPackageCommand = $"dotnet add \"{csprojPath}\" package {AutomationPackageName} --version {AutomationPackageVersion} --source https://api.nuget.org/v3/index.json";
+                // Use dotnet add package with minimum version constraint
+                // The version "[10.4.0.22,)" means "10.4.0.22 or higher", allowing NuGet to upgrade when needed
+                string versionConstraint = $"[{AutomationPackageVersion},)";
+                string addPackageCommand = $"dotnet add \"{csprojPath}\" package {AutomationPackageName} --version \"{versionConstraint}\" --source https://api.nuget.org/v3/index.json";
                 CommandExecutor.ExecuteCommand(addPackageCommand);
-                Logger.LogInfo($"Added NuGet package '{AutomationPackageName}' version '{AutomationPackageVersion}' as a replacement for DataMiner Files references.");
+                Logger.LogInfo($"Added NuGet package '{AutomationPackageName}' with minimum version constraint [{AutomationPackageVersion},) to allow NuGet resolution of higher versions when needed.");
             }
             catch (Exception ex)
             {
