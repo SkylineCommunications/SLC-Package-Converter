@@ -373,7 +373,7 @@ namespace SLC_Package_Converter.Utilities
         {
             try
             {
-                // Use dotnet add package without version to get the latest, allowing NuGet to resolve dependencies properly
+                // Use dotnet add package to add the latest version (updates if already present)
                 string addPackageCommand = $"dotnet add \"{csprojPath}\" package {AutomationPackageName} --source https://api.nuget.org/v3/index.json";
                 CommandExecutor.ExecuteCommand(addPackageCommand);
                 Logger.LogInfo($"Added NuGet package '{AutomationPackageName}' (latest version) as a replacement for DataMiner Files references.");
