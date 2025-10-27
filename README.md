@@ -7,6 +7,11 @@
 - Parses all `.xml` files and creates corresponding Automation Script Projects.
 - Automatically adds newly created `Skyline.DataMiner.Sdk` Automation Script Projects to the DataMiner Package Project.
 - Merges `.csproj` files with the correct references and dependencies.
+- **Automatically replaces deprecated/obsolete packages and references**:
+  - `SLC.Lib.Automation` → `Skyline.DataMiner.Core.DataMinerSystem.Automation`
+  - `SLC.Lib.Common` → `Skyline.DataMiner.Core.DataMinerSystem.Common`
+  - `AutomationScript_ClassLibrary` project references → `Skyline.DataMiner.Core.DataMinerSystem.Automation`
+  - References to `C:\Skyline DataMiner\Files\` → `Skyline.DataMiner.Dev.Automation` (version 10.4.0.22)
 - Copies necessary files and folders while respecting exclusion rules.
 - Automatically creates a new Git branch (`converted-package`) if no destination is specified.
 - **Project names are automatically derived from the source**: 

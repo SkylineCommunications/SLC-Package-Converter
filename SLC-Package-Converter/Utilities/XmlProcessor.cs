@@ -12,6 +12,12 @@ namespace SLC_Package_Converter.Utilities
         private const string AutomationPackageName = "Skyline.DataMiner.Dev.Automation";
         private const string AutomationPackageVersion = "10.4.0.22";
 
+        // Deprecated/Obsolete packages that are automatically replaced:
+        // - SLC.Lib.Automation → Skyline.DataMiner.Core.DataMinerSystem.Automation
+        // - SLC.Lib.Common → Skyline.DataMiner.Core.DataMinerSystem.Common
+        // - AutomationScript_ClassLibrary (project reference) → Skyline.DataMiner.Core.DataMinerSystem.Automation
+        // - References to C:\Skyline DataMiner\Files\ → Skyline.DataMiner.Dev.Automation (version 10.4.0.22)
+
         // Processes XML files in the source directory.
         public static HashSet<string> ProcessXmlFiles(string sourceDir, string destDir, string? slnFile)
         {
