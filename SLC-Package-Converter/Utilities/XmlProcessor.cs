@@ -10,7 +10,6 @@ namespace SLC_Package_Converter.Utilities
         // Constants for DataMiner Files references
         private const string DataMinerFilesPath = @"C:\Skyline DataMiner\Files\";
         private const string AutomationPackageName = "Skyline.DataMiner.Dev.Automation";
-        private const string AutomationPackageVersion = "10.4.0.22";
 
         // Processes XML files in the source directory.
         public static HashSet<string> ProcessXmlFiles(string sourceDir, string destDir, string? slnFile)
@@ -374,10 +373,10 @@ namespace SLC_Package_Converter.Utilities
         {
             try
             {
-                // Use dotnet add package with specific version
-                string addPackageCommand = $"dotnet add \"{csprojPath}\" package {AutomationPackageName} --version {AutomationPackageVersion} --source https://api.nuget.org/v3/index.json";
+                // Use dotnet add package without version to get the latest, allowing NuGet to resolve dependencies properly
+                string addPackageCommand = $"dotnet add \"{csprojPath}\" package {AutomationPackageName} --source https://api.nuget.org/v3/index.json";
                 CommandExecutor.ExecuteCommand(addPackageCommand);
-                Logger.LogInfo($"Added NuGet package '{AutomationPackageName}' version '{AutomationPackageVersion}' as a replacement for DataMiner Files references.");
+                Logger.LogInfo($"Added NuGet package '{AutomationPackageName}' (latest version) as a replacement for DataMiner Files references.");
             }
             catch (Exception ex)
             {
