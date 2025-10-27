@@ -45,11 +45,10 @@ namespace SLC_Package_Converter.Utilities
                             ? doc.Descendants(ns + "Exe")
                             : doc.Descendants("Exe");
 
-                        // Skip files with multiple Exe elements
+                        // Log if multiple Exe elements found - now supported
                         if (exeElements.Count() > 1)
                         {
-                            Logger.LogWarning($"Multiple Exe elements found in {file}. Skipping the file.");
-                            continue;
+                            Logger.LogInfo($"Multiple Exe elements found in {file}. Processing all {exeElements.Count()} EXE blocks.");
                         }
 
                         if (string.IsNullOrEmpty(scriptName))
@@ -58,6 +57,9 @@ namespace SLC_Package_Converter.Utilities
                             continue;
                         }
 
+                        // Track processed project names to detect conflicts
+                        var processedProjectNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
                         foreach (var exe in exeElements)
                         {
                             var projectValue = exe.Element(ns + "Value")?.Value;
@@ -65,11 +67,33 @@ namespace SLC_Package_Converter.Utilities
                             {
                                 // Extract the project name from the project value
                                 string projectName = ExtractProjectName(projectValue);
-                                string newName = Regex.Replace(
-                                    projectName,
-                                    @"_\d+$", // Matches an underscore followed by one or more digits at the end of the string
-                                    string.Empty // Replaces the match with an empty string
-                                );
+                                
+                                // Handle numeric suffixes: keep _63000 (special), remove others (normal)
+                                string newName = projectName;
+                                var match = Regex.Match(projectName, @"_(\d+)$");
+                                if (match.Success)
+                                {
+                                    string suffix = match.Groups[1].Value;
+                                    if (suffix == "63000")
+                                    {
+                                        // Keep _63000 suffix as-is (special case)
+                                        newName = projectName;
+                                    }
+                                    else
+                                    {
+                                        // Remove normal numeric suffixes (like _1, _2, _69)
+                                        newName = Regex.Replace(projectName, @"_\d+$", string.Empty);
+                                    }
+                                }
+
+                                // Check for duplicate project names after suffix handling
+                                if (processedProjectNames.Contains(newName))
+                                {
+                                    Logger.LogError($"Conflict detected: Multiple EXE blocks would result in the same project name '{newName}'. Original project: '{projectName}'. This typically happens when multiple EXE blocks have different normal numeric suffixes (e.g., _1, _2) that get removed. Skipping this file.");
+                                    fileProcessed = false;
+                                    break; // Exit the foreach loop to skip this entire file
+                                }
+                                processedProjectNames.Add(newName);
 
                                 // Track the processed XML file
                                 processedFiles.Add(file);

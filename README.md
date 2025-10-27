@@ -5,6 +5,7 @@
 ## ✨ Features
 
 - Parses all `.xml` files and creates corresponding Automation Script Projects.
+- **Supports automation scripts with multiple EXE blocks** - processes each EXE block as a separate project with unique naming.
 - Automatically adds newly created `Skyline.DataMiner.Sdk` Automation Script Projects to the DataMiner Package Project.
 - Merges `.csproj` files with the correct references and dependencies.
 - **Automatically replaces deprecated/obsolete packages and references**:
