@@ -308,25 +308,25 @@ namespace SLC_Package_Converter.Utilities
                         
                         for (int i = 0; i < pathParts.Length; i++)
                         {
-                            // Only process parts that look like directory/project names (not file extensions)
-                            if (!pathParts[i].Contains(".") || pathParts[i].EndsWith(".csproj"))
+                            string part = pathParts[i];
+                            
+                            // Process .csproj files
+                            if (part.EndsWith(".csproj", StringComparison.OrdinalIgnoreCase))
                             {
-                                string part = pathParts[i];
-                                if (part.EndsWith(".csproj"))
-                                {
-                                    // Handle .csproj files separately
-                                    string nameWithoutExt = Path.GetFileNameWithoutExtension(part);
-                                    string processedName = RemoveNumericSuffixExceptSpecial(nameWithoutExt);
-                                    pathParts[i] = processedName + ".csproj";
-                                }
-                                else
-                                {
-                                    pathParts[i] = RemoveNumericSuffixExceptSpecial(part);
-                                }
+                                string nameWithoutExt = Path.GetFileNameWithoutExtension(part);
+                                string processedName = RemoveNumericSuffixExceptSpecial(nameWithoutExt);
+                                pathParts[i] = processedName + ".csproj";
                             }
+                            // Process directory names (parts without file extensions)
+                            else if (!part.Contains("."))
+                            {
+                                pathParts[i] = RemoveNumericSuffixExceptSpecial(part);
+                            }
+                            // Leave other file types (like .xml, .config) unchanged
                         }
                         
-                        // Reconstruct the path using the original separator style
+                        // Reconstruct the path preserving the original separator style
+                        // Note: ProjectReferences in .csproj files typically use backslashes on Windows
                         char separator = originalPath.Contains('\\') ? '\\' : '/';
                         string updatedInclude = string.Join(separator.ToString(), pathParts);
                         includeAttribute.Value = updatedInclude;
