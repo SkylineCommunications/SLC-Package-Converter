@@ -28,6 +28,7 @@ class Program
             else if (args[i] == "--usePackageNaming")
             {
                 // Check if next argument exists and is not another flag
+                // This allows --usePackageNaming to work both as a flag and with an optional value
                 if (i + 1 < args.Length && !args[i + 1].StartsWith("--"))
                 {
                     UsePackageNaming = args[i + 1];
@@ -35,7 +36,7 @@ class Program
                 }
                 else
                 {
-                    // Use default "Package" name
+                    // Use default "Package" name when no value is provided
                     UsePackageNaming = "Package";
                 }
             }
@@ -98,7 +99,8 @@ class Program
 
                 string currentSlnNameWithoutExtension = Path.GetFileNameWithoutExtension(currentSln);
                 
-                // Use custom package naming if --usePackageNaming flag is set
+                // Use custom package naming if --usePackageNaming flag is set (with value)
+                // Otherwise, default to the source solution file name
                 string packageProjectName = currentSlnNameWithoutExtension;
                 if (!string.IsNullOrEmpty(UsePackageNaming))
                 {
