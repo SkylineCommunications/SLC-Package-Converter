@@ -30,9 +30,19 @@ class Program
             {
                 UsePackageNaming = true;
             }
-            else if (args[i] == "--packageName" && i + 1 < args.Length)
+            else if (args[i] == "--packageName")
             {
+                if (i + 1 >= args.Length || args[i + 1].StartsWith("--"))
+                {
+                    Console.WriteLine("Error: --packageName requires a value.");
+                    return;
+                }
                 PackageName = args[i + 1];
+                if (string.IsNullOrWhiteSpace(PackageName))
+                {
+                    Console.WriteLine("Error: --packageName requires a non-empty value.");
+                    return;
+                }
                 i++; // Skip the value
             }
             else if (args[i] == "--includeGitHubWorkflow" && i + 1 < args.Length)
