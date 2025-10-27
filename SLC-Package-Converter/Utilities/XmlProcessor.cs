@@ -11,6 +11,7 @@ namespace SLC_Package_Converter.Utilities
         private const string DataMinerFilesPath = @"C:\Skyline DataMiner\Files\";
         private const string AutomationPackageName = "Skyline.DataMiner.Dev.Automation";
         private const string AutomationPackageVersion = "10.4.0.22";
+        private const string NewtonsoftJsonPackageName = "Newtonsoft.Json";
 
         // Deprecated/Obsolete packages that are automatically replaced:
         // - SLC.Lib.Automation → Skyline.DataMiner.Core.DataMinerSystem.Automation
@@ -299,16 +300,29 @@ namespace SLC_Package_Converter.Utilities
                 }
 
                 bool hasDataMinerFilesReferences = false;
+                bool hasNewtonsoftJsonReference = false;
                 foreach (var reference in sourceReferences)
                 {
-                    // Check if the reference has a HintPath pointing to C:\Skyline DataMiner\Files\
+                    // Check if the reference has a HintPath pointing to Skyline DataMiner\Files\ (can be absolute or relative path)
                     var hintPath = reference.Element(ns + "HintPath")?.Value ?? reference.Element("HintPath")?.Value;
-                    if (!string.IsNullOrEmpty(hintPath) && hintPath.Contains(DataMinerFilesPath, StringComparison.OrdinalIgnoreCase))
+                    if (!string.IsNullOrEmpty(hintPath) && 
+                        (hintPath.Contains(@"Skyline DataMiner\Files\", StringComparison.OrdinalIgnoreCase) ||
+                         hintPath.Contains("Skyline DataMiner/Files/", StringComparison.OrdinalIgnoreCase)))
                     {
                         // Exclude this reference and log it
                         string referenceName = reference.Attribute("Include")?.Value ?? "Unknown";
-                        Logger.LogInfo($"Excluding reference '{referenceName}' with HintPath pointing to DataMiner Files directory. It will be replaced by the {AutomationPackageName} NuGet package.");
-                        hasDataMinerFilesReferences = true;
+                        
+                        // Special handling for Newtonsoft.Json
+                        if (referenceName.StartsWith("Newtonsoft.Json", StringComparison.OrdinalIgnoreCase))
+                        {
+                            Logger.LogInfo($"Excluding reference '{referenceName}' with HintPath pointing to DataMiner Files directory. It will be replaced by the {NewtonsoftJsonPackageName} NuGet package.");
+                            hasNewtonsoftJsonReference = true;
+                        }
+                        else
+                        {
+                            Logger.LogInfo($"Excluding reference '{referenceName}' with HintPath pointing to DataMiner Files directory. It will be replaced by the {AutomationPackageName} NuGet package.");
+                            hasDataMinerFilesReferences = true;
+                        }
                         continue;
                     }
 
@@ -331,6 +345,12 @@ namespace SLC_Package_Converter.Utilities
                 string xmlContent = File.ReadAllText(destinationCsprojPath);
                 xmlContent = Regex.Replace(xmlContent, @"\sxmlns=""[^""]+""", ""); // Remove xmlns attribute
                 File.WriteAllText(destinationCsprojPath, xmlContent);
+
+                // If Newtonsoft.Json reference was excluded, add the NuGet package using dotnet add
+                if (hasNewtonsoftJsonReference)
+                {
+                    AddNewtonsoftJsonPackage(destinationCsprojPath);
+                }
 
                 // If DataMiner Files references were excluded, add the Dev.Automation NuGet package using dotnet add
                 if (hasDataMinerFilesReferences)
@@ -436,6 +456,23 @@ namespace SLC_Package_Converter.Utilities
             catch (Exception ex)
             {
                 Logger.LogError($"Error adding {AutomationPackageName} package: {ex.Message}");
+                throw;
+            }
+        }
+
+        // Adds the Newtonsoft.Json package to a project using dotnet add command.
+        private static void AddNewtonsoftJsonPackage(string csprojPath)
+        {
+            try
+            {
+                // Use dotnet add package to add the latest version (updates if already present)
+                string addPackageCommand = $"dotnet add \"{csprojPath}\" package {NewtonsoftJsonPackageName} --source https://api.nuget.org/v3/index.json";
+                CommandExecutor.ExecuteCommand(addPackageCommand);
+                Logger.LogInfo($"Added latest stable NuGet package '{NewtonsoftJsonPackageName}' as a replacement for Newtonsoft.Json DLL reference.");
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError($"Error adding {NewtonsoftJsonPackageName} package: {ex.Message}");
                 throw;
             }
         }
