@@ -11,7 +11,7 @@
 - Automatically creates a new Git branch (`converted-package`) if no destination is specified.
 - **Project names are automatically derived from the source**: 
   - Automation Script projects use the project name extracted from the XML file's `[Project:...]` reference
-  - The DataMiner Package Project uses the source solution file name by default, or can be customized using `--usePackageNaming` with an optional custom name (defaults to "Package" if no name is provided)
+  - The DataMiner Package Project uses the source solution file name by default, or can be customized using `--usePackageNaming` when the solution is named "AutomationScript" (defaults to "Package" if no custom name is provided)
 
 ## 🚀 Usage
 
@@ -32,9 +32,10 @@ SLC-Package-Converter.exe --sourceDir <SourceDirectory> [--destDir <DestinationD
   - If you already created a new DataMiner Package Project, specify the destination directory.  
   - If omitted, the tool will automatically create a new package project in a new Git branch named `converted-package`.
 - `--usePackageNaming [CustomName]` (optional): 
+  - Only applies when the source solution is named "AutomationScript".
   - When specified without a value, uses "Package" as the DataMiner Package Project name.
   - When specified with a custom name, uses that custom name as the DataMiner Package Project name.
-  - This is useful when you want to use a different name than the source solution file name.
+  - Ignored if the source solution is not named "AutomationScript".
 - `--includeGitHubWorkflow` (optional): Type of GitHub workflow to include. Options:
   - `None`: No GitHub workflow
   - `Basic`: Basic GitHub workflow (build, test, publish)
@@ -59,12 +60,12 @@ SLC-Package-Converter.exe --sourceDir "C:\Path\To\Source"
 SLC-Package-Converter.exe --sourceDir "C:\Path\To\Source" --branchName "feature/new-package-structure"
 ```
 
-#### Use Package naming convention
+#### Use Package naming convention (for AutomationScript solution only)
 ```bash
-# Use default "Package" name
+# Use default "Package" name when source solution is "AutomationScript.sln"
 SLC-Package-Converter.exe --sourceDir "C:\Path\To\Source" --usePackageNaming
 
-# Use custom name "MyCustomPackage"
+# Use custom name "MyCustomPackage" when source solution is "AutomationScript.sln"
 SLC-Package-Converter.exe --sourceDir "C:\Path\To\Source" --usePackageNaming "MyCustomPackage"
 ```
 

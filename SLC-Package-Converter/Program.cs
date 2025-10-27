@@ -99,10 +99,10 @@ class Program
 
                 string currentSlnNameWithoutExtension = Path.GetFileNameWithoutExtension(currentSln);
                 
-                // Use custom package naming if --usePackageNaming flag is set (with value)
+                // Use custom package naming if --usePackageNaming flag is set AND solution is "AutomationScript"
                 // Otherwise, default to the source solution file name
                 string packageProjectName = currentSlnNameWithoutExtension;
-                if (!string.IsNullOrEmpty(UsePackageNaming))
+                if (!string.IsNullOrEmpty(UsePackageNaming) && currentSlnNameWithoutExtension.Equals("AutomationScript", StringComparison.OrdinalIgnoreCase))
                 {
                     packageProjectName = UsePackageNaming;
                 }
