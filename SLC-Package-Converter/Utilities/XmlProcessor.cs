@@ -51,11 +51,21 @@ namespace SLC_Package_Converter.Utilities
                             {
                                 // Extract the project name from the project value
                                 string projectName = ExtractProjectName(projectValue);
-                                string newName = Regex.Replace(
-                                    projectName,
-                                    @"_\d+$", // Matches an underscore followed by one or more digits at the end of the string
-                                    string.Empty // Replaces the match with an empty string
-                                );
+                                
+                                // Check for trailing numeric suffix
+                                string newName = projectName;
+                                var match = Regex.Match(projectName, @"_(\d+)$");
+                                if (match.Success)
+                                {
+                                    string suffix = match.Groups[1].Value;
+                                    // Only allow _63000 suffix, all other numeric suffixes should cause an error
+                                    if (suffix != "63000")
+                                    {
+                                        Logger.LogError($"Project '{projectName}' has unsupported numeric suffix '_{suffix}'. Only '_63000' is allowed. Skipping this EXE block.");
+                                        continue;
+                                    }
+                                    // Keep _63000 suffix as-is
+                                }
 
                                 // Track the processed XML file
                                 processedFiles.Add(file);
