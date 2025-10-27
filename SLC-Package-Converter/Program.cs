@@ -8,7 +8,7 @@ class Program
         // Parse command-line arguments
         string? SourceDirectory = null;
         string? DestinationDirectory = null;
-        bool UsePackageNaming = false; // Optional: use "Package" naming convention
+        string? UsePackageNaming = null; // Optional: use custom package naming (or "Package" as default)
         string IncludeGitHubWorkflow = "Complete"; // Default value
         string BranchName = "converted-package"; // Default value
         bool PreserveHistory = false; // Default value (false means use orphan branch)
@@ -27,7 +27,17 @@ class Program
             }
             else if (args[i] == "--usePackageNaming")
             {
-                UsePackageNaming = true;
+                // Check if next argument exists and is not another flag
+                if (i + 1 < args.Length && !args[i + 1].StartsWith("--"))
+                {
+                    UsePackageNaming = args[i + 1];
+                    i++; // Skip the value
+                }
+                else
+                {
+                    // Use default "Package" name
+                    UsePackageNaming = "Package";
+                }
             }
             else if (args[i] == "--includeGitHubWorkflow" && i + 1 < args.Length)
             {
@@ -47,7 +57,7 @@ class Program
 
         if (string.IsNullOrEmpty(SourceDirectory))
         {
-            Console.WriteLine("Usage: SLC-Package-Converter.exe --sourceDir <SourceDirectory> [--destDir <DestinationDirectory>] [--usePackageNaming] [--includeGitHubWorkflow <None|Basic|Complete>] [--branchName <BranchName>] [--preserveHistory]");
+            Console.WriteLine("Usage: SLC-Package-Converter.exe --sourceDir <SourceDirectory> [--destDir <DestinationDirectory>] [--usePackageNaming [CustomName]] [--includeGitHubWorkflow <None|Basic|Complete>] [--branchName <BranchName>] [--preserveHistory]");
             return;
         }
 
@@ -88,11 +98,11 @@ class Program
 
                 string currentSlnNameWithoutExtension = Path.GetFileNameWithoutExtension(currentSln);
                 
-                // Use "Package" naming if --usePackageNaming flag is set and solution name is "AutomationScript"
+                // Use custom package naming if --usePackageNaming flag is set
                 string packageProjectName = currentSlnNameWithoutExtension;
-                if (UsePackageNaming && currentSlnNameWithoutExtension.Equals("AutomationScript", StringComparison.OrdinalIgnoreCase))
+                if (!string.IsNullOrEmpty(UsePackageNaming))
                 {
-                    packageProjectName = "Package";
+                    packageProjectName = UsePackageNaming;
                 }
                 
                 DestinationDirectory = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
