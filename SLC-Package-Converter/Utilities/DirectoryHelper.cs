@@ -171,7 +171,9 @@ namespace SLC_Package_Converter.Utilities
                             continue;
                         }
 
-                        string tempPath = Path.Combine(destDirName, subdir.Name);
+                        // Apply consistent suffix removal to subdirectory names
+                        string sanitizedSubdirName = XmlProcessor.RemoveNumericSuffixExceptSpecial(subdir.Name);
+                        string tempPath = Path.Combine(destDirName, sanitizedSubdirName);
 
                         DirectoryCopy(subdir.FullName, tempPath, copySubDirs, excludedSubDirs, excludedFiles, processedFiles);
                     }
