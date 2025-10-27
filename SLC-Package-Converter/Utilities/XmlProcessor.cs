@@ -278,9 +278,11 @@ namespace SLC_Package_Converter.Utilities
                 bool hasNewtonsoftJsonReference = false;
                 foreach (var reference in sourceReferences)
                 {
-                    // Check if the reference has a HintPath pointing to C:\Skyline DataMiner\Files\
+                    // Check if the reference has a HintPath pointing to Skyline DataMiner\Files\ (can be absolute or relative path)
                     var hintPath = reference.Element(ns + "HintPath")?.Value ?? reference.Element("HintPath")?.Value;
-                    if (!string.IsNullOrEmpty(hintPath) && hintPath.Contains(DataMinerFilesPath, StringComparison.OrdinalIgnoreCase))
+                    if (!string.IsNullOrEmpty(hintPath) && 
+                        (hintPath.Contains(@"Skyline DataMiner\Files\", StringComparison.OrdinalIgnoreCase) ||
+                         hintPath.Contains("Skyline DataMiner/Files/", StringComparison.OrdinalIgnoreCase)))
                     {
                         // Exclude this reference and log it
                         string referenceName = reference.Attribute("Include")?.Value ?? "Unknown";
