@@ -11,7 +11,7 @@
 - Automatically creates a new Git branch (`converted-package`) if no destination is specified.
 - **Project names are automatically derived from the source**: 
   - Automation Script projects use the project name extracted from the XML file's `[Project:...]` reference
-  - The DataMiner Package Project uses the source solution file name by default, or can be customized using `--usePackageNaming` when the solution is named "AutomationScript" (defaults to "Package" if no custom name is provided)
+  - The DataMiner Package Project uses the source solution file name by default, or can be customized using `--packageName` (always applies) or `--usePackageNaming` (only applies when the solution is named "AutomationScript")
 
 ## 🚀 Usage
 
@@ -24,18 +24,21 @@ Download the latest release of the tool from the [**Releases**](https://github.c
 Run the tool using the following command:
 
 ```bash
-SLC-Package-Converter.exe --sourceDir <SourceDirectory> [--destDir <DestinationDirectory>] [--usePackageNaming [CustomName]] [--includeGitHubWorkflow <None|Basic|Complete>] [--branchName <BranchName>] [--preserveHistory]
+SLC-Package-Converter.exe --sourceDir <SourceDirectory> [--destDir <DestinationDirectory>] [--usePackageNaming] [--packageName <CustomName>] [--includeGitHubWorkflow <None|Basic|Complete>] [--branchName <BranchName>] [--preserveHistory]
 ```
 
 - `--sourceDir`: The folder where your current Automation Scripts are located (e.g., the repository folder).
 - `--destDir` (optional):  
   - If you already created a new DataMiner Package Project, specify the destination directory.  
   - If omitted, the tool will automatically create a new package project in a new Git branch named `converted-package`.
-- `--usePackageNaming [CustomName]` (optional): 
+- `--usePackageNaming` (optional): 
   - Only applies when the source solution is named "AutomationScript".
-  - When specified without a value, uses "Package" as the DataMiner Package Project name.
-  - When specified with a custom name, uses that custom name as the DataMiner Package Project name.
+  - When specified, uses "Package" as the DataMiner Package Project name instead of "AutomationScript".
   - Ignored if the source solution is not named "AutomationScript".
+- `--packageName <CustomName>` (optional):
+  - Specifies a custom name for the DataMiner Package Project.
+  - Always applies the specified name, regardless of the source solution name.
+  - Takes precedence over `--usePackageNaming`.
 - `--includeGitHubWorkflow` (optional): Type of GitHub workflow to include. Options:
   - `None`: No GitHub workflow
   - `Basic`: Basic GitHub workflow (build, test, publish)
@@ -62,11 +65,17 @@ SLC-Package-Converter.exe --sourceDir "C:\Path\To\Source" --branchName "feature/
 
 #### Use Package naming convention (for AutomationScript solution only)
 ```bash
-# Use default "Package" name when source solution is "AutomationScript.sln"
+# Use "Package" name when source solution is "AutomationScript.sln"
 SLC-Package-Converter.exe --sourceDir "C:\Path\To\Source" --usePackageNaming
+```
 
-# Use custom name "MyCustomPackage" when source solution is "AutomationScript.sln"
-SLC-Package-Converter.exe --sourceDir "C:\Path\To\Source" --usePackageNaming "MyCustomPackage"
+#### Use custom package name (always applies)
+```bash
+# Use custom name "MyCustomPackage" for any solution
+SLC-Package-Converter.exe --sourceDir "C:\Path\To\Source" --packageName "MyCustomPackage"
+
+# Both flags can be combined, but --packageName takes precedence
+SLC-Package-Converter.exe --sourceDir "C:\Path\To\Source" --usePackageNaming --packageName "MyCustomPackage"
 ```
 
 #### Create branch preserving git history
@@ -88,7 +97,7 @@ SLC-Package-Converter.exe --sourceDir "C:\Path\To\Source" --includeGitHubWorkflo
 
 #### Comprehensive example (multiple arguments)
 ```bash
-SLC-Package-Converter.exe --sourceDir "C:\Path\To\Source" --usePackageNaming "MyPackage" --branchName "feature/package-migration" --includeGitHubWorkflow "Basic" --preserveHistory
+SLC-Package-Converter.exe --sourceDir "C:\Path\To\Source" --packageName "MyPackage" --branchName "feature/package-migration" --includeGitHubWorkflow "Basic" --preserveHistory
 ```
 
 
