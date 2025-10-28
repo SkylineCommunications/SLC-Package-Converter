@@ -77,16 +77,19 @@ namespace SLC_Package_Converter.Utilities
                     // Check if the folder name ends with ".Tests"
                     if (dir.Name.EndsWith(".Tests", StringComparison.OrdinalIgnoreCase))
                     {
-                        // Extract the part before ".Tests", apply the suffix removal, and add ".Tests" back
+                        // Extract the part before ".Tests", apply the regex, and add ".Tests" back
                         string baseName = dir.Name.Substring(0, dir.Name.Length - ".Tests".Length);
-                        string sanitizedBaseName = XmlProcessor.RemoveNumericSuffixExceptSpecial(baseName);
+                        string sanitizedBaseName = Regex.Replace(baseName, @"_\d+$", string.Empty);
                         destinationDirPath = Path.Combine(destDir, sanitizedBaseName + ".Tests");
                     }
                     else
                     {
-                        // Apply consistent suffix removal that preserves _63000
-                        string sanitizedDirName = XmlProcessor.RemoveNumericSuffixExceptSpecial(dir.Name);
-                        destinationDirPath = Path.Combine(destDir, sanitizedDirName);
+                        // Apply the regex directly if the folder name does not end with ".Tests"
+                        destinationDirPath = Regex.Replace(
+                            Path.Combine(destDir, dir.Name),
+                            @"_\d+$", // Matches an underscore followed by one or more digits at the end of the string
+                            string.Empty // Replaces the match with an empty string
+                        );
                     }
 
                     DirectoryCopy(dir.FullName, destinationDirPath, true, excludedSubDirs, excludedFiles, processedFiles);
@@ -137,8 +140,12 @@ namespace SLC_Package_Converter.Utilities
                     string fileNameWithoutExtension = Path.GetFileNameWithoutExtension(file.Name);
                     string fileExtension = file.Extension;
 
-                    // Apply consistent suffix removal that preserves _63000
-                    string sanitizedFileName = XmlProcessor.RemoveNumericSuffixExceptSpecial(fileNameWithoutExtension);
+                    // Apply the regex to the file name without the extension
+                    string sanitizedFileName = Regex.Replace(
+                        fileNameWithoutExtension,
+                        @"_\d+$", // Matches an underscore followed by one or more digits at the end of the string
+                        string.Empty
+                    );
 
                     // Recombine the sanitized file name with the original extension
                     string tempPath = Path.Combine(destDirName, sanitizedFileName + fileExtension);
@@ -171,9 +178,7 @@ namespace SLC_Package_Converter.Utilities
                             continue;
                         }
 
-                        // Apply consistent suffix removal to subdirectory names
-                        string sanitizedSubdirName = XmlProcessor.RemoveNumericSuffixExceptSpecial(subdir.Name);
-                        string tempPath = Path.Combine(destDirName, sanitizedSubdirName);
+                        string tempPath = Path.Combine(destDirName, subdir.Name);
 
                         DirectoryCopy(subdir.FullName, tempPath, copySubDirs, excludedSubDirs, excludedFiles, processedFiles);
                     }

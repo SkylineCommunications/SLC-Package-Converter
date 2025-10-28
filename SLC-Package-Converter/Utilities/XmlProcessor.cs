@@ -69,7 +69,22 @@ namespace SLC_Package_Converter.Utilities
                                 string projectName = ExtractProjectName(projectValue);
                                 
                                 // Handle numeric suffixes: keep _63000 (special), remove others (normal)
-                                string newName = RemoveNumericSuffixExceptSpecial(projectName);
+                                string newName = projectName;
+                                var match = Regex.Match(projectName, @"_(\d+)$");
+                                if (match.Success)
+                                {
+                                    string suffix = match.Groups[1].Value;
+                                    if (suffix == "63000")
+                                    {
+                                        // Keep _63000 suffix as-is (special case)
+                                        newName = projectName;
+                                    }
+                                    else
+                                    {
+                                        // Remove normal numeric suffixes (like _1, _2, _69)
+                                        newName = Regex.Replace(projectName, @"_\d+$", string.Empty);
+                                    }
+                                }
 
                                 // Check for duplicate project names after suffix handling
                                 if (processedProjectNames.Contains(newName))
@@ -168,28 +183,6 @@ namespace SLC_Package_Converter.Utilities
                 Logger.LogError($"Error extracting project name: {ex.Message}");
                 throw;
             }
-        }
-
-        // Removes numeric suffixes from names, but preserves the special _63000 suffix.
-        // This provides consistent handling across the codebase for project names, file names, and directory names.
-        public static string RemoveNumericSuffixExceptSpecial(string name)
-        {
-            var match = Regex.Match(name, @"_(\d+)$");
-            if (match.Success)
-            {
-                string suffix = match.Groups[1].Value;
-                if (suffix == "63000")
-                {
-                    // Keep _63000 suffix as-is (special case)
-                    return name;
-                }
-                else
-                {
-                    // Remove normal numeric suffixes (like _1, _2, _69)
-                    return Regex.Replace(name, @"_\d+$", string.Empty);
-                }
-            }
-            return name;
         }
 
         // Merges the contents of two .csproj files.
@@ -301,34 +294,12 @@ namespace SLC_Package_Converter.Utilities
                             continue;
                         }
 
-                        // Apply consistent suffix removal logic to the Include path
-                        // Split path into parts, apply suffix removal to each part, then reconstruct
-                        string originalPath = includeAttribute.Value;
-                        string[] pathParts = originalPath.Split(new[] { '\\', '/' }, StringSplitOptions.RemoveEmptyEntries);
-                        
-                        for (int i = 0; i < pathParts.Length; i++)
-                        {
-                            string part = pathParts[i];
-                            
-                            // Process .csproj files
-                            if (part.EndsWith(".csproj", StringComparison.OrdinalIgnoreCase))
-                            {
-                                string nameWithoutExt = Path.GetFileNameWithoutExtension(part);
-                                string processedName = RemoveNumericSuffixExceptSpecial(nameWithoutExt);
-                                pathParts[i] = processedName + ".csproj";
-                            }
-                            // Process directory names (parts without file extensions)
-                            else if (!part.Contains("."))
-                            {
-                                pathParts[i] = RemoveNumericSuffixExceptSpecial(part);
-                            }
-                            // Leave other file types (like .xml, .config) unchanged
-                        }
-                        
-                        // Reconstruct the path preserving the original separator style
-                        // Note: ProjectReferences in .csproj files typically use backslashes on Windows
-                        char separator = originalPath.Contains('\\') ? '\\' : '/';
-                        string updatedInclude = string.Join(separator.ToString(), pathParts);
+                        // Apply regex to remove "_int" from the Include path
+                        string updatedInclude = Regex.Replace(
+                            includeAttribute.Value,
+                            @"_\d+", // Matches an underscore followed by one or more digits
+                            string.Empty
+                        );
                         includeAttribute.Value = updatedInclude;
                     }
 
