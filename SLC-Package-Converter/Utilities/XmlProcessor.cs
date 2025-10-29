@@ -63,71 +63,95 @@ namespace SLC_Package_Converter.Utilities
                         foreach (var exe in exeElements)
                         {
                             var projectValue = exe.Element(ns + "Value")?.Value;
-                            if (projectValue != null && projectValue.Contains("[Project:"))
+                            
+                            // Skip if there's no value at all
+                            if (string.IsNullOrEmpty(projectValue))
+                            {
+                                continue;
+                            }
+
+                            // Determine project name: extract from [Project:] tag if present, otherwise use script name
+                            string projectName;
+                            bool hasProjectTag = projectValue.Contains("[Project:");
+                            
+                            if (hasProjectTag)
                             {
                                 // Extract the project name from the project value
-                                string projectName = ExtractProjectName(projectValue);
-                                
-                                // Handle numeric suffixes: keep _63000 (special), remove others (normal)
-                                string newName = RemoveNumericSuffixExceptSpecial(projectName);
+                                projectName = ExtractProjectName(projectValue);
+                            }
+                            else
+                            {
+                                // Use script name when there's no [Project:] tag (e.g., embedded C# code)
+                                projectName = scriptName!;
+                            }
+                            
+                            // Handle numeric suffixes: keep _63000 (special), remove others (normal)
+                            string newName = RemoveNumericSuffixExceptSpecial(projectName);
 
-                                // Check for duplicate project names after suffix handling
-                                if (processedProjectNames.Contains(newName))
-                                {
-                                    Logger.LogError($"Conflict detected: Multiple EXE blocks would result in the same project name '{newName}'. Original project: '{projectName}'. This typically happens when multiple EXE blocks have different normal numeric suffixes (e.g., _1, _2) that get removed. Skipping this file.");
-                                    fileProcessed = false;
-                                    break; // Exit the foreach loop to skip this entire file
-                                }
-                                processedProjectNames.Add(newName);
+                            // Check for duplicate project names after suffix handling
+                            if (processedProjectNames.Contains(newName))
+                            {
+                                Logger.LogError($"Conflict detected: Multiple EXE blocks would result in the same project name '{newName}'. Original project: '{projectName}'. This typically happens when multiple EXE blocks have different normal numeric suffixes (e.g., _1, _2) that get removed. Skipping this file.");
+                                fileProcessed = false;
+                                break; // Exit the foreach loop to skip this entire file
+                            }
+                            processedProjectNames.Add(newName);
 
-                                // Track the processed XML file
-                                processedFiles.Add(file);
-                                fileProcessed = true;
+                            // Track the processed XML file
+                            processedFiles.Add(file);
+                            fileProcessed = true;
 
-                                // Track the associated csproj file
-                                string originalCsprojPath = Path.Combine(Path.Combine(Path.GetDirectoryName(file)!, projectName), $"{projectName}.csproj");
-                                if (File.Exists(originalCsprojPath))
-                                {
-                                    processedFiles.Add(originalCsprojPath);
-                                }
+                            // Track the associated csproj file (only if it exists)
+                            string originalCsprojPath = Path.Combine(Path.Combine(Path.GetDirectoryName(file)!, projectName), $"{projectName}.csproj");
+                            if (File.Exists(originalCsprojPath))
+                            {
+                                processedFiles.Add(originalCsprojPath);
+                            }
 
-                                // Create the ScriptExe object from the XML element
-                                ScriptExe scriptExe = new ScriptExe(exe);
+                            // Create the ScriptExe object from the XML element
+                            ScriptExe scriptExe = new ScriptExe(exe);
 
-                                // Determine the template name based on the precompile flag
-                                string templateName = scriptExe.IsPrecompile ? "dataminer-automation-library-project" : "dataminer-automation-project";
+                            // Determine the template name based on the precompile flag
+                            string templateName = scriptExe.IsPrecompile ? "dataminer-automation-library-project" : "dataminer-automation-project";
 
-                                // Run dotnet commands to create the project
-                                CommandExecutor.ExecuteDotnetCommands(templateName, Path.Combine(destDir, newName), slnFile);
+                            // Run dotnet commands to create the project
+                            CommandExecutor.ExecuteDotnetCommands(templateName, Path.Combine(destDir, newName), slnFile);
 
-                                // Remove the scriptName.xml file and handle the .cs file
-                                string projectDirectory = Path.Combine(destDir, newName);
-                                string xmlFilePath = Path.Combine(projectDirectory, $"{newName}.xml");
-                                string csFilePath = Path.Combine(projectDirectory, $"{newName}.cs");
+                            // Remove the scriptName.xml file and handle the .cs file
+                            string projectDirectory = Path.Combine(destDir, newName);
+                            string xmlFilePath = Path.Combine(projectDirectory, $"{newName}.xml");
+                            string csFilePath = Path.Combine(projectDirectory, $"{newName}.cs");
 
-                                if (File.Exists(xmlFilePath))
-                                {
-                                    File.Delete(xmlFilePath);
-                                }
+                            if (File.Exists(xmlFilePath))
+                            {
+                                File.Delete(xmlFilePath);
+                            }
 
-                                // Write C# code to .cs file if available, otherwise delete the template file
-                                if (!string.IsNullOrEmpty(scriptExe.CSharpCode))
-                                {
-                                    // Write the C# code from XML to the .cs file with UTF-8 BOM encoding
-                                    File.WriteAllText(csFilePath, scriptExe.CSharpCode, new System.Text.UTF8Encoding(true));
-                                }
-                                else if (File.Exists(csFilePath))
-                                {
-                                    File.Delete(csFilePath);
-                                }
+                            // Write C# code to .cs file if available, otherwise delete the template file
+                            if (!string.IsNullOrEmpty(scriptExe.CSharpCode))
+                            {
+                                // Write the C# code from XML to the .cs file with UTF-8 BOM encoding
+                                File.WriteAllText(csFilePath, scriptExe.CSharpCode, new System.Text.UTF8Encoding(true));
+                            }
+                            else if (File.Exists(csFilePath))
+                            {
+                                File.Delete(csFilePath);
+                            }
 
-                                // Write the XML content to the destination directory with UTF-8 BOM encoding
-                                // UTF-8 BOM is required for DataMiner automation scripts
-                                var xmlContent = File.ReadAllText(file).Replace($"Project:{projectName}", $"Project:{newName}");
-                                File.WriteAllText(Path.Combine(projectDirectory, $"{newName}.xml"), xmlContent, new System.Text.UTF8Encoding(true));
+                            // Write the XML content to the destination directory with UTF-8 BOM encoding
+                            // UTF-8 BOM is required for DataMiner automation scripts
+                            string xmlContent = File.ReadAllText(file);
+                            if (hasProjectTag)
+                            {
+                                // Only replace Project: tag if it existed
+                                xmlContent = xmlContent.Replace($"Project:{projectName}", $"Project:{newName}");
+                            }
+                            File.WriteAllText(Path.Combine(projectDirectory, $"{newName}.xml"), xmlContent, new System.Text.UTF8Encoding(true));
 
-                                // Merge the .csproj files
-                                MergeCsprojFiles(Path.Combine(Path.Combine(Path.GetDirectoryName(file)!, projectName), $"{projectName}.csproj"), Path.Combine(projectDirectory, $"{newName}.csproj"));
+                            // Merge the .csproj files only if the source file exists
+                            if (File.Exists(originalCsprojPath))
+                            {
+                                MergeCsprojFiles(originalCsprojPath, Path.Combine(projectDirectory, $"{newName}.csproj"));
                             }
                         }
                         if (fileProcessed)
