@@ -101,9 +101,9 @@ class Program
                 
                 // Determine the solution name and project name:
                 // ProjectName: Always "Package"
-                // SolutionName: Custom name from --solutionName, otherwise use source solution file name
+                // SolutionName: Custom name from --solutionName, otherwise use source solution file name, or "Package" if no solution exists
                 string packageProjectName = "Package";
-                string solutionName = !string.IsNullOrEmpty(SolutionName) ? SolutionName : currentSlnNameWithoutExtension;
+                string solutionName = !string.IsNullOrEmpty(SolutionName) ? SolutionName : (currentSlnNameWithoutExtension ?? "Package");
                 
                 DestinationDirectory = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
                 Logger.LogInfo("Destination Directory not specified. Creating a new branch with the new project.");
