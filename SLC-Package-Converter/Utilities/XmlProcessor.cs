@@ -100,7 +100,7 @@ namespace SLC_Package_Converter.Utilities
                                 // Run dotnet commands to create the project
                                 CommandExecutor.ExecuteDotnetCommands(templateName, Path.Combine(destDir, newName), slnFile);
 
-                                // Remove the scriptName.xml and scriptName.cs files
+                                // Remove the scriptName.xml file and handle the .cs file
                                 string projectDirectory = Path.Combine(destDir, newName);
                                 string xmlFilePath = Path.Combine(projectDirectory, $"{newName}.xml");
                                 string csFilePath = Path.Combine(projectDirectory, $"{newName}.cs");
@@ -110,7 +110,13 @@ namespace SLC_Package_Converter.Utilities
                                     File.Delete(xmlFilePath);
                                 }
 
-                                if (File.Exists(csFilePath))
+                                // Write C# code to .cs file if available, otherwise delete the template file
+                                if (!string.IsNullOrEmpty(scriptExe.CSharpCode))
+                                {
+                                    // Write the C# code from XML to the .cs file with UTF-8 BOM encoding
+                                    File.WriteAllText(csFilePath, scriptExe.CSharpCode, new System.Text.UTF8Encoding(true));
+                                }
+                                else if (File.Exists(csFilePath))
                                 {
                                     File.Delete(csFilePath);
                                 }
