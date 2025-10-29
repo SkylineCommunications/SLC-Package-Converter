@@ -82,6 +82,7 @@ namespace SLC_Package_Converter.Utilities
                             else
                             {
                                 // Use script name when there's no [Project:] tag (e.g., embedded C# code)
+                                // scriptName is guaranteed to be non-null here due to the check at line 54-58
                                 projectName = scriptName!;
                             }
                             
