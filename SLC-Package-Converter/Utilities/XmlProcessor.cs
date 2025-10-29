@@ -720,6 +720,7 @@ namespace SLC_Package_Converter.Utilities
 
                 foreach (string dllPath in dllReferences)
                 {
+                    // Apply the same rules as HintPath processing in .csproj merge
                     // Check if the DLL is in DataMiner Files directory - should be ignored
                     if (dllPath.Contains(@"Skyline DataMiner\Files\", StringComparison.OrdinalIgnoreCase) ||
                         dllPath.Contains("Skyline DataMiner/Files/", StringComparison.OrdinalIgnoreCase))
@@ -740,33 +741,7 @@ namespace SLC_Package_Converter.Utilities
                         continue;
                     }
 
-                    // Check if the DLL is in ProtocolScripts directory
-                    if (dllPath.Contains(@"Skyline DataMiner\ProtocolScripts\", StringComparison.OrdinalIgnoreCase) ||
-                        dllPath.Contains("Skyline DataMiner/ProtocolScripts/", StringComparison.OrdinalIgnoreCase))
-                    {
-                        string dllName = Path.GetFileNameWithoutExtension(dllPath);
-                        
-                        // Special handling for known DLLs in ProtocolScripts
-                        if (dllName.Equals("Newtonsoft.Json", StringComparison.OrdinalIgnoreCase))
-                        {
-                            Logger.LogInfo($"Excluding DLL reference '{dllPath}' from ProtocolScripts directory. It will be replaced by the {NewtonsoftJsonPackageName} NuGet package.");
-                            hasNewtonsoftJsonReference = true;
-                            continue;
-                        }
-                        else if (dllName.Equals("Microsoft.CSharp", StringComparison.OrdinalIgnoreCase))
-                        {
-                            // Microsoft.CSharp is a framework reference, skip it
-                            Logger.LogInfo($"Skipping framework reference '{dllName}' - it's included automatically.");
-                            continue;
-                        }
-                        else
-                        {
-                            // Keep other DLL references from ProtocolScripts
-                            Logger.LogInfo($"Adding DLL reference from ProtocolScripts: '{dllPath}'");
-                        }
-                    }
-
-                    // Add the reference to the .csproj
+                    // For all other DLLs (including ProtocolScripts), add them as references
                     string dllFileName = Path.GetFileNameWithoutExtension(dllPath);
                     
                     // Check if reference already exists
@@ -780,6 +755,7 @@ namespace SLC_Package_Converter.Utilities
                             new XElement("HintPath", dllPath)
                         );
                         referenceGroup.Add(referenceElement);
+                        Logger.LogInfo($"Adding DLL reference: '{dllPath}'");
                     }
                 }
 
