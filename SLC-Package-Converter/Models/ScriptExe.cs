@@ -9,10 +9,13 @@ namespace SLC_Package_Converter.Models
         public bool IsPrecompile { get; set; }
         public string? LibraryName { get; set; }
         public string? CSharpCode { get; set; }
+        public List<string> DllReferences { get; set; }
 
         // Initializes a new instance of the ScriptExe class from an XML element.
         public ScriptExe(XElement exeElement)
         {
+            DllReferences = new List<string>();
+            
             // Get the namespace from the element
             XNamespace ns = exeElement.Name.Namespace;
 
@@ -22,6 +25,16 @@ namespace SLC_Package_Converter.Models
             Type = paramElements.FirstOrDefault()?.Attribute("type")?.Value;
             IsPrecompile = paramElements.Any(p => p.Attribute("type")?.Value == "preCompile" && p.Value == "true");
             LibraryName = paramElements.FirstOrDefault(p => p.Attribute("type")?.Value == "libraryName")?.Value;
+            
+            // Extract DLL references from Param elements with type="ref"
+            foreach (var param in paramElements.Where(p => p.Attribute("type")?.Value == "ref"))
+            {
+                string? dllPath = param.Value;
+                if (!string.IsNullOrEmpty(dllPath))
+                {
+                    DllReferences.Add(dllPath);
+                }
+            }
             
             // Extract C# code from the Value element
             var valueElement = GetFirstElement(exeElement, ns, "Value");

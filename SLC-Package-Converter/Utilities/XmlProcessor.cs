@@ -63,72 +63,213 @@ namespace SLC_Package_Converter.Utilities
                         foreach (var exe in exeElements)
                         {
                             var projectValue = exe.Element(ns + "Value")?.Value;
-                            if (projectValue != null && projectValue.Contains("[Project:"))
+                            
+                            // Skip if there's no value at all
+                            if (string.IsNullOrEmpty(projectValue))
+                            {
+                                continue;
+                            }
+
+                            // Determine project name: extract from [Project:] tag if present, otherwise use script name
+                            string projectName;
+                            bool hasProjectTag = projectValue.Contains("[Project:");
+                            
+                            if (hasProjectTag)
                             {
                                 // Extract the project name from the project value
-                                string projectName = ExtractProjectName(projectValue);
-                                
-                                // Handle numeric suffixes: keep _63000 (special), remove others (normal)
-                                string newName = RemoveNumericSuffixExceptSpecial(projectName);
-
-                                // Check for duplicate project names after suffix handling
-                                if (processedProjectNames.Contains(newName))
-                                {
-                                    Logger.LogError($"Conflict detected: Multiple EXE blocks would result in the same project name '{newName}'. Original project: '{projectName}'. This typically happens when multiple EXE blocks have different normal numeric suffixes (e.g., _1, _2) that get removed. Skipping this file.");
-                                    fileProcessed = false;
-                                    break; // Exit the foreach loop to skip this entire file
-                                }
-                                processedProjectNames.Add(newName);
-
-                                // Track the processed XML file
-                                processedFiles.Add(file);
-                                fileProcessed = true;
-
-                                // Track the associated csproj file
-                                string originalCsprojPath = Path.Combine(Path.Combine(Path.GetDirectoryName(file)!, projectName), $"{projectName}.csproj");
-                                if (File.Exists(originalCsprojPath))
-                                {
-                                    processedFiles.Add(originalCsprojPath);
-                                }
-
-                                // Create the ScriptExe object from the XML element
-                                ScriptExe scriptExe = new ScriptExe(exe);
-
-                                // Determine the template name based on the precompile flag
-                                string templateName = scriptExe.IsPrecompile ? "dataminer-automation-library-project" : "dataminer-automation-project";
-
-                                // Run dotnet commands to create the project
-                                CommandExecutor.ExecuteDotnetCommands(templateName, Path.Combine(destDir, newName), slnFile);
-
-                                // Remove the scriptName.xml file and handle the .cs file
-                                string projectDirectory = Path.Combine(destDir, newName);
-                                string xmlFilePath = Path.Combine(projectDirectory, $"{newName}.xml");
-                                string csFilePath = Path.Combine(projectDirectory, $"{newName}.cs");
-
-                                if (File.Exists(xmlFilePath))
-                                {
-                                    File.Delete(xmlFilePath);
-                                }
-
-                                // Write C# code to .cs file if available, otherwise delete the template file
-                                if (!string.IsNullOrEmpty(scriptExe.CSharpCode))
-                                {
-                                    // Write the C# code from XML to the .cs file with UTF-8 BOM encoding
-                                    File.WriteAllText(csFilePath, scriptExe.CSharpCode, new System.Text.UTF8Encoding(true));
-                                }
-                                else if (File.Exists(csFilePath))
-                                {
-                                    File.Delete(csFilePath);
-                                }
-
-                                // Write the XML content to the destination directory with UTF-8 BOM encoding
-                                // UTF-8 BOM is required for DataMiner automation scripts
-                                var xmlContent = File.ReadAllText(file).Replace($"Project:{projectName}", $"Project:{newName}");
-                                File.WriteAllText(Path.Combine(projectDirectory, $"{newName}.xml"), xmlContent, new System.Text.UTF8Encoding(true));
-
-                                // Merge the .csproj files
-                                MergeCsprojFiles(Path.Combine(Path.Combine(Path.GetDirectoryName(file)!, projectName), $"{projectName}.csproj"), Path.Combine(projectDirectory, $"{newName}.csproj"));
+                                projectName = ExtractProjectName(projectValue);
                             }
+                            else
+                            {
+                                // Use script name when there's no [Project:] tag (e.g., embedded C# code)
+                                // scriptName is guaranteed to be non-null here due to the check at line 54-58
+                                projectName = scriptName!;
+                            }
+                            
+                            // Handle numeric suffixes: keep _63000 (special), remove others (normal)
+                            string newName = RemoveNumericSuffixExceptSpecial(projectName);
+
+                            // Check for duplicate project names after suffix handling
+                            if (processedProjectNames.Contains(newName))
+                            {
+                                Logger.LogError($"Conflict detected: Multiple EXE blocks would result in the same project name '{newName}'. Original project: '{projectName}'. This typically happens when multiple EXE blocks have different normal numeric suffixes (e.g., _1, _2) that get removed. Skipping this file.");
+                                fileProcessed = false;
+                                break; // Exit the foreach loop to skip this entire file
+                            }
+                            processedProjectNames.Add(newName);
+
+                            // Track the processed XML file
+                            processedFiles.Add(file);
+                            fileProcessed = true;
+
+                            // Track the associated csproj file (only if it exists)
+                            string originalCsprojPath = Path.Combine(Path.Combine(Path.GetDirectoryName(file)!, projectName), $"{projectName}.csproj");
+                            if (File.Exists(originalCsprojPath))
+                            {
+                                processedFiles.Add(originalCsprojPath);
+                            }
+
+                            // Create the ScriptExe object from the XML element
+                            ScriptExe scriptExe = new ScriptExe(exe);
+
+                            // Determine the template name based on the precompile flag
+                            string templateName = scriptExe.IsPrecompile ? "dataminer-automation-library-project" : "dataminer-automation-project";
+
+                            // Run dotnet commands to create the project
+                            CommandExecutor.ExecuteDotnetCommands(templateName, Path.Combine(destDir, newName), slnFile);
+
+                            // Remove the scriptName.xml file and handle the .cs file
+                            string projectDirectory = Path.Combine(destDir, newName);
+                            string xmlFilePath = Path.Combine(projectDirectory, $"{newName}.xml");
+                            string csFilePath = Path.Combine(projectDirectory, $"{newName}.cs");
+
+                            if (File.Exists(xmlFilePath))
+                            {
+                                File.Delete(xmlFilePath);
+                            }
+
+                            // Write C# code to .cs file if available, otherwise delete the template file
+                            if (!string.IsNullOrEmpty(scriptExe.CSharpCode))
+                            {
+                                // Write the C# code from XML to the .cs file with UTF-8 BOM encoding
+                                File.WriteAllText(csFilePath, scriptExe.CSharpCode, new System.Text.UTF8Encoding(true));
+                            }
+                            else if (File.Exists(csFilePath))
+                            {
+                                File.Delete(csFilePath);
+                            }
+
+                            // Write the XML content to the destination directory with UTF-8 BOM encoding
+                            // UTF-8 BOM is required for DataMiner automation scripts
+                            if (hasProjectTag)
+                            {
+                                // Replace Project: tag if it existed and remove Param type="ref" elements
+                                XDocument xmlDoc = XDocument.Load(file);
+                                XNamespace xmlNs = xmlDoc.Root?.Name.Namespace ?? XNamespace.None;
+                                
+                                // Find all Exe elements
+                                var allExeElements = xmlDoc.Descendants(xmlNs + "Exe");
+                                if (!allExeElements.Any())
+                                {
+                                    allExeElements = xmlDoc.Descendants("Exe");
+                                }
+                                var exeList = allExeElements.ToList();
+                                
+                                // Find the matching exe element by comparing the id attribute if present, or by index
+                                XElement? targetExe = null;
+                                string? exeId = exe.Attribute("id")?.Value;
+                                if (!string.IsNullOrEmpty(exeId))
+                                {
+                                    targetExe = exeList.FirstOrDefault(e => e.Attribute("id")?.Value == exeId);
+                                }
+                                else
+                                {
+                                    // If no id, try to match by index
+                                    int exeIndex = exeElements.ToList().IndexOf(exe);
+                                    if (exeIndex >= 0 && exeIndex < exeList.Count)
+                                    {
+                                        targetExe = exeList[exeIndex];
+                                    }
+                                }
+                                
+                                if (targetExe != null)
+                                {
+                                    // Replace Project: tag in Value element
+                                    var valueElement = targetExe.Element(xmlNs + "Value") ?? targetExe.Element("Value");
+                                    if (valueElement != null && valueElement.Value.Contains($"Project:{projectName}"))
+                                    {
+                                        valueElement.Value = valueElement.Value.Replace($"Project:{projectName}", $"Project:{newName}");
+                                    }
+                                    
+                                    // Remove Param type="ref" elements
+                                    var refParams = targetExe.Descendants(xmlNs + "Param")
+                                        .Where(p => p.Attribute("type")?.Value == "ref")
+                                        .ToList();
+                                    if (!refParams.Any())
+                                    {
+                                        refParams = targetExe.Descendants("Param")
+                                            .Where(p => p.Attribute("type")?.Value == "ref")
+                                            .ToList();
+                                    }
+                                    foreach (var refParam in refParams)
+                                    {
+                                        refParam.Remove();
+                                    }
+                                }
+                                
+                                // Save the modified XML with UTF-8 BOM encoding
+                                SaveXmlWithUtf8Bom(xmlDoc, Path.Combine(projectDirectory, $"{newName}.xml"));
+                            }
+                            else
+                            {
+                                // When there's no [Project:] tag, replace the embedded C# code in Value element with [Project:newName]
+                                // Load a fresh copy of the document for modification
+                                XDocument xmlDoc = XDocument.Load(file);
+                                XNamespace xmlNs = xmlDoc.Root?.Name.Namespace ?? XNamespace.None;
+                                
+                                // Find all Exe elements
+                                var allExeElements = xmlDoc.Descendants(xmlNs + "Exe");
+                                if (!allExeElements.Any())
+                                {
+                                    allExeElements = xmlDoc.Descendants("Exe");
+                                }
+                                var exeList = allExeElements.ToList();
+                                
+                                // Find the matching exe element by comparing the id attribute if present, or by index
+                                XElement? targetExe = null;
+                                string? exeId = exe.Attribute("id")?.Value;
+                                if (!string.IsNullOrEmpty(exeId))
+                                {
+                                    targetExe = exeList.FirstOrDefault(e => e.Attribute("id")?.Value == exeId);
+                                }
+                                else
+                                {
+                                    // If no id, try to match by index
+                                    int exeIndex = exeElements.ToList().IndexOf(exe);
+                                    if (exeIndex >= 0 && exeIndex < exeList.Count)
+                                    {
+                                        targetExe = exeList[exeIndex];
+                                    }
+                                }
+                                
+                                if (targetExe != null)
+                                {
+                                    // Find the Value element within the target exe element
+                                    var valueElement = targetExe.Element(xmlNs + "Value") ?? targetExe.Element("Value");
+                                    if (valueElement != null)
+                                    {
+                                        // Replace the embedded C# code with [Project:newName]
+                                        valueElement.Value = $"[Project:{newName}]";
+                                    }
+                                    
+                                    // Remove Param type="ref" elements
+                                    var refParams = targetExe.Descendants(xmlNs + "Param")
+                                        .Where(p => p.Attribute("type")?.Value == "ref")
+                                        .ToList();
+                                    if (!refParams.Any())
+                                    {
+                                        refParams = targetExe.Descendants("Param")
+                                            .Where(p => p.Attribute("type")?.Value == "ref")
+                                            .ToList();
+                                    }
+                                    foreach (var refParam in refParams)
+                                    {
+                                        refParam.Remove();
+                                    }
+                                }
+                                
+                                // Save the modified XML with UTF-8 BOM encoding
+                                SaveXmlWithUtf8Bom(xmlDoc, Path.Combine(projectDirectory, $"{newName}.xml"));
+                            }
+
+                            // Merge the .csproj files only if the source file exists
+                            if (File.Exists(originalCsprojPath))
+                            {
+                                MergeCsprojFiles(originalCsprojPath, Path.Combine(projectDirectory, $"{newName}.csproj"));
+                            }
+                            
+                            // Add DLL references from XML Param elements to the .csproj
+                            AddDllReferencesToCsproj(scriptExe.DllReferences, Path.Combine(projectDirectory, $"{newName}.csproj"));
                         }
                         if (fileProcessed)
                         {
@@ -362,26 +503,27 @@ namespace SLC_Package_Converter.Utilities
                 bool hasNewtonsoftJsonReference = false;
                 foreach (var reference in sourceReferences)
                 {
-                    // Check if the reference has a HintPath pointing to Skyline DataMiner\Files\ (can be absolute or relative path)
+                    // Check if the reference has a HintPath
                     var hintPath = reference.Element(ns + "HintPath")?.Value ?? reference.Element("HintPath")?.Value;
+                    
+                    // Check if this is Newtonsoft.Json from any directory
+                    if (!string.IsNullOrEmpty(hintPath) && hintPath.Contains("Newtonsoft.Json", StringComparison.OrdinalIgnoreCase))
+                    {
+                        string referenceName = reference.Attribute("Include")?.Value ?? "Unknown";
+                        Logger.LogInfo($"Excluding reference '{referenceName}' with HintPath '{hintPath}'. It will be replaced by the {NewtonsoftJsonPackageName} NuGet package.");
+                        hasNewtonsoftJsonReference = true;
+                        continue;
+                    }
+                    
+                    // Check if the reference has a HintPath pointing to Skyline DataMiner\Files\ (can be absolute or relative path)
                     if (!string.IsNullOrEmpty(hintPath) && 
                         (hintPath.Contains(@"Skyline DataMiner\Files\", StringComparison.OrdinalIgnoreCase) ||
                          hintPath.Contains("Skyline DataMiner/Files/", StringComparison.OrdinalIgnoreCase)))
                     {
                         // Exclude this reference and log it
                         string referenceName = reference.Attribute("Include")?.Value ?? "Unknown";
-                        
-                        // Special handling for Newtonsoft.Json
-                        if (referenceName.StartsWith("Newtonsoft.Json", StringComparison.OrdinalIgnoreCase))
-                        {
-                            Logger.LogInfo($"Excluding reference '{referenceName}' with HintPath pointing to DataMiner Files directory. It will be replaced by the {NewtonsoftJsonPackageName} NuGet package.");
-                            hasNewtonsoftJsonReference = true;
-                        }
-                        else
-                        {
-                            Logger.LogInfo($"Excluding reference '{referenceName}' with HintPath pointing to DataMiner Files directory. It will be replaced by the {AutomationPackageName} NuGet package.");
-                            hasDataMinerFilesReferences = true;
-                        }
+                        Logger.LogInfo($"Excluding reference '{referenceName}' with HintPath pointing to DataMiner Files directory. It will be replaced by the {AutomationPackageName} NuGet package.");
+                        hasDataMinerFilesReferences = true;
                         continue;
                     }
 
@@ -534,6 +676,109 @@ namespace SLC_Package_Converter.Utilities
             catch (Exception ex)
             {
                 Logger.LogError($"Error adding {NewtonsoftJsonPackageName} package: {ex.Message}");
+                throw;
+            }
+        }
+
+        // Saves an XDocument to a file with UTF-8 BOM encoding.
+        private static void SaveXmlWithUtf8Bom(XDocument xmlDoc, string filePath)
+        {
+            using (var memoryStream = new MemoryStream())
+            {
+                using (var streamWriter = new StreamWriter(memoryStream, new System.Text.UTF8Encoding(true)))
+                {
+                    xmlDoc.Save(streamWriter);
+                    streamWriter.Flush();
+                    File.WriteAllBytes(filePath, memoryStream.ToArray());
+                }
+            }
+        }
+
+        // Adds DLL references from XML Param elements to the .csproj file.
+        private static void AddDllReferencesToCsproj(List<string> dllReferences, string csprojPath)
+        {
+            if (dllReferences == null || dllReferences.Count == 0)
+            {
+                return;
+            }
+
+            try
+            {
+                XDocument csprojDoc = XDocument.Load(csprojPath);
+                XElement projectElement = csprojDoc.Element("Project")!;
+                
+                // Find or create ItemGroup for References
+                var itemGroups = projectElement.Elements("ItemGroup").ToList();
+                XElement? referenceGroup = itemGroups.FirstOrDefault(ig => ig.Elements("Reference").Any());
+                if (referenceGroup == null)
+                {
+                    referenceGroup = new XElement("ItemGroup");
+                    projectElement.Add(referenceGroup);
+                }
+
+                bool hasDataMinerFilesReferences = false;
+                bool hasNewtonsoftJsonReference = false;
+
+                foreach (string dllPath in dllReferences)
+                {
+                    // Check if this is Newtonsoft.Json from any directory
+                    if (dllPath.Contains("Newtonsoft.Json", StringComparison.OrdinalIgnoreCase))
+                    {
+                        Logger.LogInfo($"Excluding DLL reference '{dllPath}'. It will be replaced by the {NewtonsoftJsonPackageName} NuGet package.");
+                        hasNewtonsoftJsonReference = true;
+                        continue;
+                    }
+
+                    // Apply the same rules as HintPath processing in .csproj merge
+                    // Check if the DLL is in DataMiner Files directory - should be ignored
+                    if (dllPath.Contains(@"Skyline DataMiner\Files\", StringComparison.OrdinalIgnoreCase) ||
+                        dllPath.Contains("Skyline DataMiner/Files/", StringComparison.OrdinalIgnoreCase))
+                    {
+                        Logger.LogInfo($"Excluding DLL reference '{dllPath}' from DataMiner Files directory. It will be replaced by the {AutomationPackageName} NuGet package.");
+                        hasDataMinerFilesReferences = true;
+                        continue;
+                    }
+
+                    // For all other DLLs (including ProtocolScripts), add them as references
+                    string dllFileName = Path.GetFileNameWithoutExtension(dllPath);
+                    
+                    // Check if reference already exists
+                    var existingRef = referenceGroup.Elements("Reference")
+                        .FirstOrDefault(r => r.Attribute("Include")?.Value?.StartsWith(dllFileName, StringComparison.OrdinalIgnoreCase) == true);
+                    
+                    if (existingRef == null)
+                    {
+                        XElement referenceElement = new XElement("Reference",
+                            new XAttribute("Include", dllFileName),
+                            new XElement("HintPath", dllPath)
+                        );
+                        referenceGroup.Add(referenceElement);
+                        Logger.LogInfo($"Adding DLL reference: '{dllPath}'");
+                    }
+                }
+
+                // Save the updated .csproj
+                csprojDoc.Save(csprojPath);
+
+                // Remove xmlns attribute from the saved .csproj file
+                string xmlContent = File.ReadAllText(csprojPath);
+                xmlContent = Regex.Replace(xmlContent, @"\sxmlns=""[^""]+""", ""); // Remove xmlns attribute
+                File.WriteAllText(csprojPath, xmlContent);
+
+                // Add NuGet packages if needed
+                if (hasNewtonsoftJsonReference)
+                {
+                    AddNewtonsoftJsonPackage(csprojPath);
+                }
+
+                if (hasDataMinerFilesReferences)
+                {
+                    AddDevAutomationPackage(csprojPath);
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError($"Error adding DLL references to .csproj: {ex.Message}");
                 throw;
             }
         }
