@@ -141,13 +141,64 @@ namespace SLC_Package_Converter.Utilities
 
                             // Write the XML content to the destination directory with UTF-8 BOM encoding
                             // UTF-8 BOM is required for DataMiner automation scripts
-                            string xmlContent = File.ReadAllText(file);
                             if (hasProjectTag)
                             {
-                                // Only replace Project: tag if it existed
+                                // Replace Project: tag if it existed
+                                string xmlContent = File.ReadAllText(file);
                                 xmlContent = xmlContent.Replace($"Project:{projectName}", $"Project:{newName}");
+                                File.WriteAllText(Path.Combine(projectDirectory, $"{newName}.xml"), xmlContent, new System.Text.UTF8Encoding(true));
                             }
-                            File.WriteAllText(Path.Combine(projectDirectory, $"{newName}.xml"), xmlContent, new System.Text.UTF8Encoding(true));
+                            else
+                            {
+                                // When there's no [Project:] tag, replace the embedded C# code in Value element with [Project:newName]
+                                // Load a fresh copy of the document for modification
+                                XDocument xmlDoc = XDocument.Load(file);
+                                XNamespace xmlNs = xmlDoc.Root?.Name.Namespace ?? XNamespace.None;
+                                
+                                // Find all Exe elements
+                                var allExeElements = xmlDoc.Descendants(xmlNs + "Exe").Any()
+                                    ? xmlDoc.Descendants(xmlNs + "Exe").ToList()
+                                    : xmlDoc.Descendants("Exe").ToList();
+                                
+                                // Find the matching exe element by comparing the id attribute if present, or by index
+                                XElement? targetExe = null;
+                                string? exeId = exe.Attribute("id")?.Value;
+                                if (!string.IsNullOrEmpty(exeId))
+                                {
+                                    targetExe = allExeElements.FirstOrDefault(e => e.Attribute("id")?.Value == exeId);
+                                }
+                                else
+                                {
+                                    // If no id, try to match by index
+                                    int exeIndex = exeElements.ToList().IndexOf(exe);
+                                    if (exeIndex >= 0 && exeIndex < allExeElements.Count)
+                                    {
+                                        targetExe = allExeElements[exeIndex];
+                                    }
+                                }
+                                
+                                if (targetExe != null)
+                                {
+                                    // Find the Value element within the target exe element
+                                    var valueElement = targetExe.Element(xmlNs + "Value") ?? targetExe.Element("Value");
+                                    if (valueElement != null)
+                                    {
+                                        // Replace the embedded C# code with [Project:newName]
+                                        valueElement.Value = $"[Project:{newName}]";
+                                    }
+                                }
+                                
+                                // Save the modified XML with UTF-8 BOM encoding
+                                using (var memoryStream = new MemoryStream())
+                                {
+                                    using (var streamWriter = new StreamWriter(memoryStream, new System.Text.UTF8Encoding(true)))
+                                    {
+                                        xmlDoc.Save(streamWriter);
+                                        streamWriter.Flush();
+                                        File.WriteAllBytes(Path.Combine(projectDirectory, $"{newName}.xml"), memoryStream.ToArray());
+                                    }
+                                }
+                            }
 
                             // Merge the .csproj files only if the source file exists
                             if (File.Exists(originalCsprojPath))
