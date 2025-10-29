@@ -503,26 +503,27 @@ namespace SLC_Package_Converter.Utilities
                 bool hasNewtonsoftJsonReference = false;
                 foreach (var reference in sourceReferences)
                 {
-                    // Check if the reference has a HintPath pointing to Skyline DataMiner\Files\ (can be absolute or relative path)
+                    // Check if the reference has a HintPath
                     var hintPath = reference.Element(ns + "HintPath")?.Value ?? reference.Element("HintPath")?.Value;
+                    
+                    // Check if this is Newtonsoft.Json from any directory
+                    if (!string.IsNullOrEmpty(hintPath) && hintPath.Contains("Newtonsoft.Json", StringComparison.OrdinalIgnoreCase))
+                    {
+                        string referenceName = reference.Attribute("Include")?.Value ?? "Unknown";
+                        Logger.LogInfo($"Excluding reference '{referenceName}' with HintPath '{hintPath}'. It will be replaced by the {NewtonsoftJsonPackageName} NuGet package.");
+                        hasNewtonsoftJsonReference = true;
+                        continue;
+                    }
+                    
+                    // Check if the reference has a HintPath pointing to Skyline DataMiner\Files\ (can be absolute or relative path)
                     if (!string.IsNullOrEmpty(hintPath) && 
                         (hintPath.Contains(@"Skyline DataMiner\Files\", StringComparison.OrdinalIgnoreCase) ||
                          hintPath.Contains("Skyline DataMiner/Files/", StringComparison.OrdinalIgnoreCase)))
                     {
                         // Exclude this reference and log it
                         string referenceName = reference.Attribute("Include")?.Value ?? "Unknown";
-                        
-                        // Special handling for Newtonsoft.Json
-                        if (referenceName.StartsWith("Newtonsoft.Json", StringComparison.OrdinalIgnoreCase))
-                        {
-                            Logger.LogInfo($"Excluding reference '{referenceName}' with HintPath pointing to DataMiner Files directory. It will be replaced by the {NewtonsoftJsonPackageName} NuGet package.");
-                            hasNewtonsoftJsonReference = true;
-                        }
-                        else
-                        {
-                            Logger.LogInfo($"Excluding reference '{referenceName}' with HintPath pointing to DataMiner Files directory. It will be replaced by the {AutomationPackageName} NuGet package.");
-                            hasDataMinerFilesReferences = true;
-                        }
+                        Logger.LogInfo($"Excluding reference '{referenceName}' with HintPath pointing to DataMiner Files directory. It will be replaced by the {AutomationPackageName} NuGet package.");
+                        hasDataMinerFilesReferences = true;
                         continue;
                     }
 
@@ -720,24 +721,21 @@ namespace SLC_Package_Converter.Utilities
 
                 foreach (string dllPath in dllReferences)
                 {
+                    // Check if this is Newtonsoft.Json from any directory
+                    if (dllPath.Contains("Newtonsoft.Json", StringComparison.OrdinalIgnoreCase))
+                    {
+                        Logger.LogInfo($"Excluding DLL reference '{dllPath}'. It will be replaced by the {NewtonsoftJsonPackageName} NuGet package.");
+                        hasNewtonsoftJsonReference = true;
+                        continue;
+                    }
+
                     // Apply the same rules as HintPath processing in .csproj merge
                     // Check if the DLL is in DataMiner Files directory - should be ignored
                     if (dllPath.Contains(@"Skyline DataMiner\Files\", StringComparison.OrdinalIgnoreCase) ||
                         dllPath.Contains("Skyline DataMiner/Files/", StringComparison.OrdinalIgnoreCase))
                     {
-                        string dllName = Path.GetFileNameWithoutExtension(dllPath);
-                        
-                        // Special handling for Newtonsoft.Json
-                        if (dllName.StartsWith("Newtonsoft.Json", StringComparison.OrdinalIgnoreCase))
-                        {
-                            Logger.LogInfo($"Excluding DLL reference '{dllPath}' from DataMiner Files directory. It will be replaced by the {NewtonsoftJsonPackageName} NuGet package.");
-                            hasNewtonsoftJsonReference = true;
-                        }
-                        else
-                        {
-                            Logger.LogInfo($"Excluding DLL reference '{dllPath}' from DataMiner Files directory. It will be replaced by the {AutomationPackageName} NuGet package.");
-                            hasDataMinerFilesReferences = true;
-                        }
+                        Logger.LogInfo($"Excluding DLL reference '{dllPath}' from DataMiner Files directory. It will be replaced by the {AutomationPackageName} NuGet package.");
+                        hasDataMinerFilesReferences = true;
                         continue;
                     }
 
