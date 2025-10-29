@@ -27,7 +27,11 @@ namespace SLC_Package_Converter.Models
         private static IEnumerable<XElement> GetDescendants(XElement parent, XNamespace ns, string elementName)
         {
             var namespacedElements = parent.Descendants(ns + elementName).ToList();
-            return namespacedElements.Any() ? namespacedElements : parent.Descendants(elementName);
+            if (namespacedElements.Any())
+            {
+                return namespacedElements;
+            }
+            return parent.Descendants(elementName).ToList();
         }
     }
 }
