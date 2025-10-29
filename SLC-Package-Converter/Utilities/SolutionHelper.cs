@@ -77,9 +77,16 @@ namespace SLC_Package_Converter.Utilities
         {
             try
             {
-                if (string.IsNullOrWhiteSpace(sourceSlnFile) || string.IsNullOrWhiteSpace(destSlnFile))
+                // If source solution file is null or empty, just log and return (no shared projects to copy)
+                if (string.IsNullOrWhiteSpace(sourceSlnFile))
                 {
-                    throw new ArgumentException("Source or destination solution file path is null or empty.");
+                    Logger.LogInfo("No source solution file provided. Skipping shared project references.");
+                    return;
+                }
+                
+                if (string.IsNullOrWhiteSpace(destSlnFile))
+                {
+                    throw new ArgumentException("Destination solution file path is null or empty.");
                 }
 
                 // Read all lines from the source solution file

@@ -92,12 +92,12 @@ class Program
             if (string.IsNullOrEmpty(DestinationDirectory))
             {
                 var currentSln = SolutionHelper.GetSolutionFile(SourceDirectory);
-                if (currentSln == null)
+                string? currentSlnNameWithoutExtension = null;
+                
+                if (currentSln != null)
                 {
-                    throw new FileNotFoundException("Solution file not found.");
+                    currentSlnNameWithoutExtension = Path.GetFileNameWithoutExtension(currentSln);
                 }
-
-                string currentSlnNameWithoutExtension = Path.GetFileNameWithoutExtension(currentSln);
                 
                 // Determine the solution name and project name:
                 // ProjectName: Always "Package"
