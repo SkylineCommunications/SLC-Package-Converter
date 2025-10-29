@@ -156,24 +156,27 @@ namespace SLC_Package_Converter.Utilities
                                 XNamespace xmlNs = xmlDoc.Root?.Name.Namespace ?? XNamespace.None;
                                 
                                 // Find all Exe elements
-                                var allExeElements = xmlDoc.Descendants(xmlNs + "Exe").Any()
-                                    ? xmlDoc.Descendants(xmlNs + "Exe").ToList()
-                                    : xmlDoc.Descendants("Exe").ToList();
+                                var allExeElements = xmlDoc.Descendants(xmlNs + "Exe");
+                                if (!allExeElements.Any())
+                                {
+                                    allExeElements = xmlDoc.Descendants("Exe");
+                                }
+                                var exeList = allExeElements.ToList();
                                 
                                 // Find the matching exe element by comparing the id attribute if present, or by index
                                 XElement? targetExe = null;
                                 string? exeId = exe.Attribute("id")?.Value;
                                 if (!string.IsNullOrEmpty(exeId))
                                 {
-                                    targetExe = allExeElements.FirstOrDefault(e => e.Attribute("id")?.Value == exeId);
+                                    targetExe = exeList.FirstOrDefault(e => e.Attribute("id")?.Value == exeId);
                                 }
                                 else
                                 {
                                     // If no id, try to match by index
                                     int exeIndex = exeElements.ToList().IndexOf(exe);
-                                    if (exeIndex >= 0 && exeIndex < allExeElements.Count)
+                                    if (exeIndex >= 0 && exeIndex < exeList.Count)
                                     {
-                                        targetExe = allExeElements[exeIndex];
+                                        targetExe = exeList[exeIndex];
                                     }
                                 }
                                 
@@ -189,15 +192,7 @@ namespace SLC_Package_Converter.Utilities
                                 }
                                 
                                 // Save the modified XML with UTF-8 BOM encoding
-                                using (var memoryStream = new MemoryStream())
-                                {
-                                    using (var streamWriter = new StreamWriter(memoryStream, new System.Text.UTF8Encoding(true)))
-                                    {
-                                        xmlDoc.Save(streamWriter);
-                                        streamWriter.Flush();
-                                        File.WriteAllBytes(Path.Combine(projectDirectory, $"{newName}.xml"), memoryStream.ToArray());
-                                    }
-                                }
+                                SaveXmlWithUtf8Bom(xmlDoc, Path.Combine(projectDirectory, $"{newName}.xml"));
                             }
 
                             // Merge the .csproj files only if the source file exists
@@ -611,6 +606,20 @@ namespace SLC_Package_Converter.Utilities
             {
                 Logger.LogError($"Error adding {NewtonsoftJsonPackageName} package: {ex.Message}");
                 throw;
+            }
+        }
+
+        // Saves an XDocument to a file with UTF-8 BOM encoding.
+        private static void SaveXmlWithUtf8Bom(XDocument xmlDoc, string filePath)
+        {
+            using (var memoryStream = new MemoryStream())
+            {
+                using (var streamWriter = new StreamWriter(memoryStream, new System.Text.UTF8Encoding(true)))
+                {
+                    xmlDoc.Save(streamWriter);
+                    streamWriter.Flush();
+                    File.WriteAllBytes(filePath, memoryStream.ToArray());
+                }
             }
         }
     }
