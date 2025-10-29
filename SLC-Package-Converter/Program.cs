@@ -8,8 +8,7 @@ class Program
         // Parse command-line arguments
         string? SourceDirectory = null;
         string? DestinationDirectory = null;
-        bool UsePackageNaming = false; // Optional: use "Package" naming for AutomationScript.sln
-        string? PackageName = null; // Optional: custom package name (always applies)
+        string? SolutionName = null; // Optional: custom solution name
         string IncludeGitHubWorkflow = "Complete"; // Default value
         string BranchName = "converted-package"; // Default value
         bool PreserveHistory = false; // Default value (false means use orphan branch)
@@ -26,24 +25,20 @@ class Program
                 DestinationDirectory = args[i + 1];
                 i++; // Skip the value
             }
-            else if (args[i] == "--usePackageNaming")
+            else if (args[i] == "--solutionName" && i + 1 < args.Length)
             {
-                UsePackageNaming = true;
-            }
-            else if (args[i] == "--packageName")
-            {
-                if (i + 1 >= args.Length || args[i + 1].StartsWith("--"))
+                SolutionName = args[i + 1];
+                if (string.IsNullOrWhiteSpace(SolutionName))
                 {
-                    Console.WriteLine("Error: --packageName requires a value.");
-                    return;
-                }
-                PackageName = args[i + 1];
-                if (string.IsNullOrWhiteSpace(PackageName))
-                {
-                    Console.WriteLine("Error: --packageName requires a non-empty value.");
+                    Console.WriteLine("Error: --solutionName requires a non-empty value.");
                     return;
                 }
                 i++; // Skip the value
+            }
+            else if (args[i] == "--solutionName")
+            {
+                Console.WriteLine("Error: --solutionName requires a value.");
+                return;
             }
             else if (args[i] == "--includeGitHubWorkflow" && i + 1 < args.Length)
             {
@@ -63,7 +58,7 @@ class Program
 
         if (string.IsNullOrEmpty(SourceDirectory))
         {
-            Console.WriteLine("Usage: SLC-Package-Converter.exe --sourceDir <SourceDirectory> [--destDir <DestinationDirectory>] [--usePackageNaming] [--packageName <CustomName>] [--includeGitHubWorkflow <None|Basic|Complete>] [--branchName <BranchName>] [--preserveHistory]");
+            Console.WriteLine("Usage: SLC-Package-Converter.exe --sourceDir <SourceDirectory> [--destDir <DestinationDirectory>] [--solutionName <CustomName>] [--includeGitHubWorkflow <None|Basic|Complete>] [--branchName <BranchName>] [--preserveHistory]");
             return;
         }
 
@@ -104,23 +99,11 @@ class Program
 
                 string currentSlnNameWithoutExtension = Path.GetFileNameWithoutExtension(currentSln);
                 
-                // Determine package project name based on parameters:
-                // 1. If --packageName is specified, always use it
-                // 2. If --usePackageNaming is specified AND solution is "AutomationScript", use "Package"
-                // 3. Otherwise, use the source solution file name
-                string packageProjectName;
-                if (!string.IsNullOrEmpty(PackageName))
-                {
-                    packageProjectName = PackageName;
-                }
-                else if (UsePackageNaming && currentSlnNameWithoutExtension.Equals("AutomationScript", StringComparison.OrdinalIgnoreCase))
-                {
-                    packageProjectName = "Package";
-                }
-                else
-                {
-                    packageProjectName = currentSlnNameWithoutExtension;
-                }
+                // Determine the solution name and project name:
+                // ProjectName: Always "Package"
+                // SolutionName: Custom name from --solutionName, otherwise use source solution file name
+                string packageProjectName = "Package";
+                string solutionName = !string.IsNullOrEmpty(SolutionName) ? SolutionName : currentSlnNameWithoutExtension;
                 
                 DestinationDirectory = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
                 Logger.LogInfo("Destination Directory not specified. Creating a new branch with the new project.");
@@ -130,7 +113,7 @@ class Program
                 string createProjectCommand =
                     $"cd \"{DestinationDirectory}\" && " +
                     $"dotnet new dataminer-package-project -o \"{packageProjectName}\" -n \"{packageProjectName}\" -auth \"\" -cdp true -I {IncludeGitHubWorkflow} --force && " +
-                    $"dotnet new sln -n \"{packageProjectName}\" && " +
+                    $"dotnet new sln -n \"{solutionName}\" && " +
                     $"dotnet sln add \"{packageProjectName}/{packageProjectName}.csproj\"";
                 CommandExecutor.ExecuteCommand(createProjectCommand);
 
