@@ -650,7 +650,7 @@ namespace SLC_Package_Converter.Utilities
         {
             try
             {
-                // Use dotnet add package with exact version 10.4.0.22
+                // Use dotnet add package with exact version (as defined in AutomationPackageVersion constant)
                 string addPackageCommand = $"dotnet add \"{csprojPath}\" package {AutomationPackageName} --version \"{AutomationPackageVersion}\" --source https://api.nuget.org/v3/index.json";
                 CommandExecutor.ExecuteCommand(addPackageCommand);
                 Logger.LogInfo($"Added NuGet package '{AutomationPackageName}' with version {AutomationPackageVersion}.");
