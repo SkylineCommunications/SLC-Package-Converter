@@ -25,13 +25,8 @@ class Program
                 DestinationDirectory = args[i + 1];
                 i++; // Skip the value
             }
-            else if (args[i] == "--solutionName")
+            else if (args[i] == "--solutionName" && i + 1 < args.Length)
             {
-                if (i + 1 >= args.Length || args[i + 1].StartsWith("--"))
-                {
-                    Console.WriteLine("Error: --solutionName requires a value.");
-                    return;
-                }
                 SolutionName = args[i + 1];
                 if (string.IsNullOrWhiteSpace(SolutionName))
                 {
@@ -39,6 +34,11 @@ class Program
                     return;
                 }
                 i++; // Skip the value
+            }
+            else if (args[i] == "--solutionName")
+            {
+                Console.WriteLine("Error: --solutionName requires a value.");
+                return;
             }
             else if (args[i] == "--includeGitHubWorkflow" && i + 1 < args.Length)
             {
