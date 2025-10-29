@@ -143,10 +143,62 @@ namespace SLC_Package_Converter.Utilities
                             // UTF-8 BOM is required for DataMiner automation scripts
                             if (hasProjectTag)
                             {
-                                // Replace Project: tag if it existed
-                                string xmlContent = File.ReadAllText(file);
-                                xmlContent = xmlContent.Replace($"Project:{projectName}", $"Project:{newName}");
-                                File.WriteAllText(Path.Combine(projectDirectory, $"{newName}.xml"), xmlContent, new System.Text.UTF8Encoding(true));
+                                // Replace Project: tag if it existed and remove Param type="ref" elements
+                                XDocument xmlDoc = XDocument.Load(file);
+                                XNamespace xmlNs = xmlDoc.Root?.Name.Namespace ?? XNamespace.None;
+                                
+                                // Find all Exe elements
+                                var allExeElements = xmlDoc.Descendants(xmlNs + "Exe");
+                                if (!allExeElements.Any())
+                                {
+                                    allExeElements = xmlDoc.Descendants("Exe");
+                                }
+                                var exeList = allExeElements.ToList();
+                                
+                                // Find the matching exe element by comparing the id attribute if present, or by index
+                                XElement? targetExe = null;
+                                string? exeId = exe.Attribute("id")?.Value;
+                                if (!string.IsNullOrEmpty(exeId))
+                                {
+                                    targetExe = exeList.FirstOrDefault(e => e.Attribute("id")?.Value == exeId);
+                                }
+                                else
+                                {
+                                    // If no id, try to match by index
+                                    int exeIndex = exeElements.ToList().IndexOf(exe);
+                                    if (exeIndex >= 0 && exeIndex < exeList.Count)
+                                    {
+                                        targetExe = exeList[exeIndex];
+                                    }
+                                }
+                                
+                                if (targetExe != null)
+                                {
+                                    // Replace Project: tag in Value element
+                                    var valueElement = targetExe.Element(xmlNs + "Value") ?? targetExe.Element("Value");
+                                    if (valueElement != null && valueElement.Value.Contains($"Project:{projectName}"))
+                                    {
+                                        valueElement.Value = valueElement.Value.Replace($"Project:{projectName}", $"Project:{newName}");
+                                    }
+                                    
+                                    // Remove Param type="ref" elements
+                                    var refParams = targetExe.Descendants(xmlNs + "Param")
+                                        .Where(p => p.Attribute("type")?.Value == "ref")
+                                        .ToList();
+                                    if (!refParams.Any())
+                                    {
+                                        refParams = targetExe.Descendants("Param")
+                                            .Where(p => p.Attribute("type")?.Value == "ref")
+                                            .ToList();
+                                    }
+                                    foreach (var refParam in refParams)
+                                    {
+                                        refParam.Remove();
+                                    }
+                                }
+                                
+                                // Save the modified XML with UTF-8 BOM encoding
+                                SaveXmlWithUtf8Bom(xmlDoc, Path.Combine(projectDirectory, $"{newName}.xml"));
                             }
                             else
                             {
@@ -189,6 +241,21 @@ namespace SLC_Package_Converter.Utilities
                                         // Replace the embedded C# code with [Project:newName]
                                         valueElement.Value = $"[Project:{newName}]";
                                     }
+                                    
+                                    // Remove Param type="ref" elements
+                                    var refParams = targetExe.Descendants(xmlNs + "Param")
+                                        .Where(p => p.Attribute("type")?.Value == "ref")
+                                        .ToList();
+                                    if (!refParams.Any())
+                                    {
+                                        refParams = targetExe.Descendants("Param")
+                                            .Where(p => p.Attribute("type")?.Value == "ref")
+                                            .ToList();
+                                    }
+                                    foreach (var refParam in refParams)
+                                    {
+                                        refParam.Remove();
+                                    }
                                 }
                                 
                                 // Save the modified XML with UTF-8 BOM encoding
@@ -200,6 +267,9 @@ namespace SLC_Package_Converter.Utilities
                             {
                                 MergeCsprojFiles(originalCsprojPath, Path.Combine(projectDirectory, $"{newName}.csproj"));
                             }
+                            
+                            // Add DLL references from XML Param elements to the .csproj
+                            AddDllReferencesToCsproj(scriptExe.DllReferences, Path.Combine(projectDirectory, $"{newName}.csproj"));
                         }
                         if (fileProcessed)
                         {
@@ -620,6 +690,122 @@ namespace SLC_Package_Converter.Utilities
                     streamWriter.Flush();
                     File.WriteAllBytes(filePath, memoryStream.ToArray());
                 }
+            }
+        }
+
+        // Adds DLL references from XML Param elements to the .csproj file.
+        private static void AddDllReferencesToCsproj(List<string> dllReferences, string csprojPath)
+        {
+            if (dllReferences == null || dllReferences.Count == 0)
+            {
+                return;
+            }
+
+            try
+            {
+                XDocument csprojDoc = XDocument.Load(csprojPath);
+                XElement projectElement = csprojDoc.Element("Project")!;
+                
+                // Find or create ItemGroup for References
+                var itemGroups = projectElement.Elements("ItemGroup").ToList();
+                XElement? referenceGroup = itemGroups.FirstOrDefault(ig => ig.Elements("Reference").Any());
+                if (referenceGroup == null)
+                {
+                    referenceGroup = new XElement("ItemGroup");
+                    projectElement.Add(referenceGroup);
+                }
+
+                bool hasDataMinerFilesReferences = false;
+                bool hasNewtonsoftJsonReference = false;
+
+                foreach (string dllPath in dllReferences)
+                {
+                    // Check if the DLL is in DataMiner Files directory - should be ignored
+                    if (dllPath.Contains(@"Skyline DataMiner\Files\", StringComparison.OrdinalIgnoreCase) ||
+                        dllPath.Contains("Skyline DataMiner/Files/", StringComparison.OrdinalIgnoreCase))
+                    {
+                        string dllName = Path.GetFileNameWithoutExtension(dllPath);
+                        
+                        // Special handling for Newtonsoft.Json
+                        if (dllName.StartsWith("Newtonsoft.Json", StringComparison.OrdinalIgnoreCase))
+                        {
+                            Logger.LogInfo($"Excluding DLL reference '{dllPath}' from DataMiner Files directory. It will be replaced by the {NewtonsoftJsonPackageName} NuGet package.");
+                            hasNewtonsoftJsonReference = true;
+                        }
+                        else
+                        {
+                            Logger.LogInfo($"Excluding DLL reference '{dllPath}' from DataMiner Files directory. It will be replaced by the {AutomationPackageName} NuGet package.");
+                            hasDataMinerFilesReferences = true;
+                        }
+                        continue;
+                    }
+
+                    // Check if the DLL is in ProtocolScripts directory
+                    if (dllPath.Contains(@"Skyline DataMiner\ProtocolScripts\", StringComparison.OrdinalIgnoreCase) ||
+                        dllPath.Contains("Skyline DataMiner/ProtocolScripts/", StringComparison.OrdinalIgnoreCase))
+                    {
+                        string dllName = Path.GetFileNameWithoutExtension(dllPath);
+                        
+                        // Special handling for known DLLs in ProtocolScripts
+                        if (dllName.Equals("Newtonsoft.Json", StringComparison.OrdinalIgnoreCase))
+                        {
+                            Logger.LogInfo($"Excluding DLL reference '{dllPath}' from ProtocolScripts directory. It will be replaced by the {NewtonsoftJsonPackageName} NuGet package.");
+                            hasNewtonsoftJsonReference = true;
+                            continue;
+                        }
+                        else if (dllName.Equals("Microsoft.CSharp", StringComparison.OrdinalIgnoreCase))
+                        {
+                            // Microsoft.CSharp is a framework reference, skip it
+                            Logger.LogInfo($"Skipping framework reference '{dllName}' - it's included automatically.");
+                            continue;
+                        }
+                        else
+                        {
+                            // Keep other DLL references from ProtocolScripts
+                            Logger.LogInfo($"Adding DLL reference from ProtocolScripts: '{dllPath}'");
+                        }
+                    }
+
+                    // Add the reference to the .csproj
+                    string dllFileName = Path.GetFileNameWithoutExtension(dllPath);
+                    
+                    // Check if reference already exists
+                    var existingRef = referenceGroup.Elements("Reference")
+                        .FirstOrDefault(r => r.Attribute("Include")?.Value?.StartsWith(dllFileName, StringComparison.OrdinalIgnoreCase) == true);
+                    
+                    if (existingRef == null)
+                    {
+                        XElement referenceElement = new XElement("Reference",
+                            new XAttribute("Include", dllFileName),
+                            new XElement("HintPath", dllPath)
+                        );
+                        referenceGroup.Add(referenceElement);
+                    }
+                }
+
+                // Save the updated .csproj
+                csprojDoc.Save(csprojPath);
+
+                // Remove xmlns attribute from the saved .csproj file
+                string xmlContent = File.ReadAllText(csprojPath);
+                xmlContent = Regex.Replace(xmlContent, @"\sxmlns=""[^""]+""", ""); // Remove xmlns attribute
+                File.WriteAllText(csprojPath, xmlContent);
+
+                // Add NuGet packages if needed
+                if (hasNewtonsoftJsonReference)
+                {
+                    AddNewtonsoftJsonPackage(csprojPath);
+                }
+
+                if (hasDataMinerFilesReferences)
+                {
+                    AddDevAutomationPackage(csprojPath);
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError($"Error adding DLL references to .csproj: {ex.Message}");
+                throw;
             }
         }
     }
