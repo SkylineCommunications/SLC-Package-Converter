@@ -97,29 +97,36 @@ class Program
             if (string.IsNullOrEmpty(DestinationDirectory))
             {
                 var currentSln = SolutionHelper.GetSolutionFile(SourceDirectory);
-                if (currentSln == null)
+                string? currentSlnNameWithoutExtension = null;
+                
+                if (currentSln != null)
                 {
-                    throw new FileNotFoundException("Solution file not found.");
+                    currentSlnNameWithoutExtension = Path.GetFileNameWithoutExtension(currentSln);
                 }
-
-                string currentSlnNameWithoutExtension = Path.GetFileNameWithoutExtension(currentSln);
                 
                 // Determine package project name based on parameters:
                 // 1. If --packageName is specified, always use it
                 // 2. If --usePackageNaming is specified AND solution is "AutomationScript", use "Package"
-                // 3. Otherwise, use the source solution file name
+                // 3. If source solution file exists, use its name
+                // 4. Otherwise, use "AutomationScriptPackage" as default
                 string packageProjectName;
                 if (!string.IsNullOrEmpty(PackageName))
                 {
                     packageProjectName = PackageName;
                 }
-                else if (UsePackageNaming && currentSlnNameWithoutExtension.Equals("AutomationScript", StringComparison.OrdinalIgnoreCase))
+                else if (UsePackageNaming && currentSlnNameWithoutExtension != null && currentSlnNameWithoutExtension.Equals("AutomationScript", StringComparison.OrdinalIgnoreCase))
                 {
                     packageProjectName = "Package";
                 }
-                else
+                else if (currentSlnNameWithoutExtension != null)
                 {
                     packageProjectName = currentSlnNameWithoutExtension;
+                }
+                else
+                {
+                    // No source solution file found, use default name
+                    packageProjectName = "AutomationScriptPackage";
+                    Logger.LogInfo("No source solution file found. Using default package name: AutomationScriptPackage");
                 }
                 
                 DestinationDirectory = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
