@@ -16,18 +16,24 @@ namespace SLC_Package_Converter.Models
             XNamespace ns = exeElement.Name.Namespace;
 
             // Extract properties from the XML element, handling both namespaced and non-namespaced elements
-            Type = exeElement.Element(ns + "Param")?.Attribute("type")?.Value 
-                   ?? exeElement.Element("Param")?.Attribute("type")?.Value;
+            var paramElements = GetDescendants(exeElement, ns, "Param");
             
-            IsPrecompile = exeElement.Descendants(ns + "Param")
-                                      .Any(p => p.Attribute("type")?.Value == "preCompile" && p.Value == "true")
-                           || exeElement.Descendants("Param")
-                                      .Any(p => p.Attribute("type")?.Value == "preCompile" && p.Value == "true");
-            
-            LibraryName = exeElement.Descendants(ns + "Param")
-                                    .FirstOrDefault(p => p.Attribute("type")?.Value == "libraryName")?.Value
-                          ?? exeElement.Descendants("Param")
-                                    .FirstOrDefault(p => p.Attribute("type")?.Value == "libraryName")?.Value;
+            Type = GetFirstElement(exeElement, ns, "Param")?.Attribute("type")?.Value;
+            IsPrecompile = paramElements.Any(p => p.Attribute("type")?.Value == "preCompile" && p.Value == "true");
+            LibraryName = paramElements.FirstOrDefault(p => p.Attribute("type")?.Value == "libraryName")?.Value;
+        }
+
+        // Helper method to get the first child element with the given name, handling both namespaced and non-namespaced elements.
+        private static XElement? GetFirstElement(XElement parent, XNamespace ns, string elementName)
+        {
+            return parent.Element(ns + elementName) ?? parent.Element(elementName);
+        }
+
+        // Helper method to get all descendant elements with the given name, handling both namespaced and non-namespaced elements.
+        private static IEnumerable<XElement> GetDescendants(XElement parent, XNamespace ns, string elementName)
+        {
+            var namespacedElements = parent.Descendants(ns + elementName);
+            return namespacedElements.Any() ? namespacedElements : parent.Descendants(elementName);
         }
     }
 }
