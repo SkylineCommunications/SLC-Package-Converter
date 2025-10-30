@@ -518,6 +518,7 @@ namespace SLC_Package_Converter.Utilities
                 }
 
                 bool hasNewtonsoftJsonReference = false;
+                bool hasDataMinerFilesReferences = false;
                 foreach (var reference in sourceReferences)
                 {
                     // Check if the reference has a HintPath
@@ -559,6 +560,9 @@ namespace SLC_Package_Converter.Utilities
                         {
                             Logger.LogWarning($"Updated reference '{referenceName}' to: {newHintPath}. The DLL file was not found in the repository. Please add {dllFileName} to the Dlls folder manually.");
                         }
+                        
+                        // Mark that we found DataMiner Files references to add the Dev.Automation NuGet package
+                        hasDataMinerFilesReferences = true;
                     }
 
                     var existingReference = referenceGroup.Elements("Reference")
@@ -585,6 +589,12 @@ namespace SLC_Package_Converter.Utilities
                 if (hasNewtonsoftJsonReference)
                 {
                     AddNewtonsoftJsonPackage(destinationCsprojPath);
+                }
+
+                // If DataMiner Files references were found, add the Dev.Automation NuGet package using dotnet add
+                if (hasDataMinerFilesReferences)
+                {
+                    AddDevAutomationPackage(destinationCsprojPath);
                 }
 
                 // If SLC.Lib.Automation was referenced, add the NuGet package instead using dotnet add
@@ -721,6 +731,7 @@ namespace SLC_Package_Converter.Utilities
                 }
 
                 bool hasNewtonsoftJsonReference = false;
+                bool hasDataMinerFilesReferences = false;
 
                 foreach (string dllPath in dllReferences)
                 {
@@ -766,6 +777,9 @@ namespace SLC_Package_Converter.Utilities
                             );
                             referenceGroup.Add(referenceElement);
                         }
+                        
+                        // Mark that we found DataMiner Files references to add the Dev.Automation NuGet package
+                        hasDataMinerFilesReferences = true;
                         continue;
                     }
 
@@ -798,6 +812,12 @@ namespace SLC_Package_Converter.Utilities
                 if (hasNewtonsoftJsonReference)
                 {
                     AddNewtonsoftJsonPackage(csprojPath);
+                }
+
+                // If DataMiner Files references were found, add the Dev.Automation NuGet package using dotnet add
+                if (hasDataMinerFilesReferences)
+                {
+                    AddDevAutomationPackage(csprojPath);
                 }
             }
             catch (Exception ex)
