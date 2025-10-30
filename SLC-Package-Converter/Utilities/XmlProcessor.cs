@@ -16,9 +16,14 @@ namespace SLC_Package_Converter.Utilities
         // Deprecated/Obsolete packages that are automatically replaced:
         // - SLC.Lib.Automation → Skyline.DataMiner.Core.DataMinerSystem.Automation
         // - SLC.Lib.Common → Skyline.DataMiner.Core.DataMinerSystem.Automation
-        // - SLSRMLibrary → Skyline.DataMiner.Core.SRM
         // - AutomationScript_ClassLibrary (project reference) → Skyline.DataMiner.Core.DataMinerSystem.Automation
-        // - References to C:\Skyline DataMiner\Files\ → Skyline.DataMiner.Dev.Automation (version 10.4.0.22)
+        // - Newtonsoft.Json → Newtonsoft.Json NuGet package
+        // 
+        // Special handling for DataMiner Files references:
+        // - All references to C:\Skyline DataMiner\Files\ are updated to point to ..\Dlls\ folder
+        // - This includes SLSRMLibrary and other DLL files
+        // - DLLs are NOT automatically replaced with NuGet packages (conservative approach)
+        // - If DLL doesn't exist in Dlls folder, a warning is logged for user to add it manually
 
         // Processes XML files in the source directory.
         public static HashSet<string> ProcessXmlFiles(string sourceDir, string destDir, string? slnFile)
@@ -339,6 +344,25 @@ namespace SLC_Package_Converter.Utilities
             return name;
         }
 
+        // Checks if a DLL exists in the solution-level Dlls folder.
+        // The Dlls folder is always at solution level (same level as .sln file).
+        private static bool DllExistsInDllsFolder(string csprojPath, string dllFileName)
+        {
+            try
+            {
+                // Get the solution directory (one level up from the project)
+                string projectDir = Path.GetDirectoryName(csprojPath) ?? string.Empty;
+                string solutionDir = Path.GetDirectoryName(projectDir) ?? string.Empty;
+                string dllPath = Path.Combine(solutionDir, "Dlls", dllFileName);
+                
+                return File.Exists(dllPath);
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
         // Merges the contents of two .csproj files.
         public static void MergeCsprojFiles(string sourceCsprojPath, string destinationCsprojPath)
         {
@@ -390,7 +414,6 @@ namespace SLC_Package_Converter.Utilities
 
                 bool hasSlcLibAutomationReference = false;
                 bool hasSlcLibCommonReference = false;
-                bool hasSlSrmLibraryReference = false;
 
                 foreach (var packageReference in sourcePackageReferences)
                 {
@@ -411,13 +434,8 @@ namespace SLC_Package_Converter.Utilities
                         continue;
                     }
 
-                    // Check if this is SLSRMLibrary (obsolete package)
-                    if (includeAttribute != null && includeAttribute.Value.Equals("SLSRMLibrary", StringComparison.OrdinalIgnoreCase))
-                    {
-                        hasSlSrmLibraryReference = true;
-                        // Skip this reference - it will be replaced with NuGet package
-                        continue;
-                    }
+                    // Note: SLSRMLibrary PackageReferences are NOT automatically replaced.
+                    // They will be handled as Reference elements (DLLs) in the Reference processing section below.
 
                     var existingPackageReference = packageReferenceGroup.Elements("PackageReference")
                         .FirstOrDefault(e => e.Attribute("Include")?.Value == packageReference.Attribute("Include")?.Value);
@@ -499,17 +517,18 @@ namespace SLC_Package_Converter.Utilities
                     destinationProject.Add(referenceGroup);
                 }
 
-                bool hasDataMinerFilesReferences = false;
                 bool hasNewtonsoftJsonReference = false;
+                bool hasDataMinerFilesReferences = false;
                 foreach (var reference in sourceReferences)
                 {
                     // Check if the reference has a HintPath
                     var hintPath = reference.Element(ns + "HintPath")?.Value ?? reference.Element("HintPath")?.Value;
+                    var includeAttribute = reference.Attribute("Include");
                     
                     // Check if this is Newtonsoft.Json from any directory
                     if (!string.IsNullOrEmpty(hintPath) && hintPath.Contains("Newtonsoft.Json", StringComparison.OrdinalIgnoreCase))
                     {
-                        string referenceName = reference.Attribute("Include")?.Value ?? "Unknown";
+                        string referenceName = includeAttribute?.Value ?? "Unknown";
                         Logger.LogInfo($"Excluding reference '{referenceName}' with HintPath '{hintPath}'. It will be replaced by the {NewtonsoftJsonPackageName} NuGet package.");
                         hasNewtonsoftJsonReference = true;
                         continue;
@@ -520,11 +539,30 @@ namespace SLC_Package_Converter.Utilities
                         (hintPath.Contains(@"Skyline DataMiner\Files\", StringComparison.OrdinalIgnoreCase) ||
                          hintPath.Contains("Skyline DataMiner/Files/", StringComparison.OrdinalIgnoreCase)))
                     {
-                        // Exclude this reference and log it
-                        string referenceName = reference.Attribute("Include")?.Value ?? "Unknown";
-                        Logger.LogInfo($"Excluding reference '{referenceName}' with HintPath pointing to DataMiner Files directory. It will be replaced by the {AutomationPackageName} NuGet package.");
+                        // Update the HintPath to point to solution-level Dlls folder
+                        string dllFileName = Path.GetFileName(hintPath);
+                        string newHintPath = $@"..\Dlls\{dllFileName}";
+                        
+                        var hintPathElement = reference.Element(ns + "HintPath") ?? reference.Element("HintPath");
+                        if (hintPathElement != null)
+                        {
+                            hintPathElement.Value = newHintPath;
+                        }
+                        
+                        string referenceName = includeAttribute?.Value ?? "Unknown";
+                        bool dllExists = DllExistsInDllsFolder(destinationCsprojPath, dllFileName);
+                        
+                        if (dllExists)
+                        {
+                            Logger.LogInfo($"Updated reference '{referenceName}' from DataMiner Files directory to: {newHintPath}");
+                        }
+                        else
+                        {
+                            Logger.LogWarning($"Updated reference '{referenceName}' to: {newHintPath}. The DLL file was not found in the repository. Please add {dllFileName} to the Dlls folder manually.");
+                        }
+                        
+                        // Mark that we found DataMiner Files references to add the Dev.Automation NuGet package
                         hasDataMinerFilesReferences = true;
-                        continue;
                     }
 
                     var existingReference = referenceGroup.Elements("Reference")
@@ -553,7 +591,7 @@ namespace SLC_Package_Converter.Utilities
                     AddNewtonsoftJsonPackage(destinationCsprojPath);
                 }
 
-                // If DataMiner Files references were excluded, add the Dev.Automation NuGet package using dotnet add
+                // If DataMiner Files references were found, add the Dev.Automation NuGet package using dotnet add
                 if (hasDataMinerFilesReferences)
                 {
                     AddDevAutomationPackage(destinationCsprojPath);
@@ -570,12 +608,6 @@ namespace SLC_Package_Converter.Utilities
                 if (hasSlcLibCommonReference)
                 {
                     AddDataMinerSystemAutomationPackage(destinationCsprojPath);
-                }
-
-                // If SLSRMLibrary was referenced, add the NuGet package instead using dotnet add
-                if (hasSlSrmLibraryReference)
-                {
-                    AddDataMinerSystemSrmPackage(destinationCsprojPath);
                 }
 
                 // If AutomationScript_ClassLibrary was referenced, add the NuGet package instead using dotnet add
@@ -624,23 +656,6 @@ namespace SLC_Package_Converter.Utilities
             catch (Exception ex)
             {
                 Logger.LogError($"Error adding DataMinerSystem.Automation package: {ex.Message}");
-                throw;
-            }
-        }
-
-        // Adds the Skyline.DataMiner.Core.SRM package to a project using dotnet add command.
-        private static void AddDataMinerSystemSrmPackage(string csprojPath)
-        {
-            try
-            {
-                // Use dotnet add package to add the latest version (updates if already present)
-                string addPackageCommand = $"dotnet add \"{csprojPath}\" package Skyline.DataMiner.Core.SRM --source https://api.nuget.org/v3/index.json";
-                CommandExecutor.ExecuteCommand(addPackageCommand);
-                Logger.LogInfo("Replaced SLSRMLibrary reference with NuGet package Skyline.DataMiner.Core.SRM");
-            }
-            catch (Exception ex)
-            {
-                Logger.LogError($"Error adding DataMiner.Core.SRM package: {ex.Message}");
                 throw;
             }
         }
@@ -715,11 +730,13 @@ namespace SLC_Package_Converter.Utilities
                     projectElement.Add(referenceGroup);
                 }
 
-                bool hasDataMinerFilesReferences = false;
                 bool hasNewtonsoftJsonReference = false;
+                bool hasDataMinerFilesReferences = false;
 
                 foreach (string dllPath in dllReferences)
                 {
+                    string dllFileName = Path.GetFileNameWithoutExtension(dllPath);
+                    
                     // Check if this is Newtonsoft.Json from any directory
                     if (dllPath.Contains("Newtonsoft.Json", StringComparison.OrdinalIgnoreCase))
                     {
@@ -729,17 +746,44 @@ namespace SLC_Package_Converter.Utilities
                     }
 
                     // Apply the same rules as HintPath processing in .csproj merge
-                    // Check if the DLL is in DataMiner Files directory - should be ignored
+                    // Check if the DLL is in DataMiner Files directory - update path to Dlls folder
                     if (dllPath.Contains(@"Skyline DataMiner\Files\", StringComparison.OrdinalIgnoreCase) ||
                         dllPath.Contains("Skyline DataMiner/Files/", StringComparison.OrdinalIgnoreCase))
                     {
-                        Logger.LogInfo($"Excluding DLL reference '{dllPath}' from DataMiner Files directory. It will be replaced by the {AutomationPackageName} NuGet package.");
+                        // Update the path to point to solution-level Dlls folder
+                        string fullDllFileName = $"{dllFileName}.dll";
+                        string newHintPath = $@"..\Dlls\{fullDllFileName}";
+                        
+                        bool dllExists = DllExistsInDllsFolder(csprojPath, fullDllFileName);
+                        
+                        if (dllExists)
+                        {
+                            Logger.LogInfo($"Adding DLL reference '{dllFileName}' from DataMiner Files directory to: {newHintPath}");
+                        }
+                        else
+                        {
+                            Logger.LogWarning($"Adding DLL reference '{dllFileName}' to: {newHintPath}. The DLL file was not found in the repository. Please add {fullDllFileName} to the Dlls folder manually.");
+                        }
+                        
+                        // Check if reference already exists
+                        var existingDataMinerRef = referenceGroup.Elements("Reference")
+                            .FirstOrDefault(r => r.Attribute("Include")?.Value?.StartsWith(dllFileName, StringComparison.OrdinalIgnoreCase) == true);
+                        
+                        if (existingDataMinerRef == null)
+                        {
+                            XElement referenceElement = new XElement("Reference",
+                                new XAttribute("Include", dllFileName),
+                                new XElement("HintPath", newHintPath)
+                            );
+                            referenceGroup.Add(referenceElement);
+                        }
+                        
+                        // Mark that we found DataMiner Files references to add the Dev.Automation NuGet package
                         hasDataMinerFilesReferences = true;
                         continue;
                     }
 
                     // For all other DLLs (including ProtocolScripts), add them as references
-                    string dllFileName = Path.GetFileNameWithoutExtension(dllPath);
                     
                     // Check if reference already exists
                     var existingRef = referenceGroup.Elements("Reference")
@@ -770,6 +814,7 @@ namespace SLC_Package_Converter.Utilities
                     AddNewtonsoftJsonPackage(csprojPath);
                 }
 
+                // If DataMiner Files references were found, add the Dev.Automation NuGet package using dotnet add
                 if (hasDataMinerFilesReferences)
                 {
                     AddDevAutomationPackage(csprojPath);

@@ -11,9 +11,12 @@
 - **Automatically replaces deprecated/obsolete packages and references**:
   - `SLC.Lib.Automation` → `Skyline.DataMiner.Core.DataMinerSystem.Automation`
   - `SLC.Lib.Common` → `Skyline.DataMiner.Core.DataMinerSystem.Automation`
-  - `SLSRMLibrary` → `Skyline.DataMiner.Core.SRM`
   - `AutomationScript_ClassLibrary` project references → `Skyline.DataMiner.Core.DataMinerSystem.Automation`
   - References to `C:\Skyline DataMiner\Files\` → `Skyline.DataMiner.Dev.Automation` (version 10.4.0.22)
+- **Conservative handling of SLSRMLibrary**:
+  - Does NOT automatically replace with NuGet package (safer for production SRM environments)
+  - If `SLSRMLibrary.dll` exists in `Dlls` folder (solution or project level), references are updated to use that file
+  - If reference points to `C:\Skyline DataMiner\Files\SLSRMLibrary.dll` and no DLL found in repository, path is updated to point to solution-level `Dlls` folder (user must add file manually)
 - Copies necessary files and folders while respecting exclusion rules.
 - Automatically creates a new Git branch (`converted-package`) if no destination is specified.
 - **Project names are automatically derived from the source**: 
