@@ -848,6 +848,8 @@ namespace SLC_Package_Converter.Utilities
 
                 foreach (string dllPath in dllReferences)
                 {
+                    string dllFileName = Path.GetFileNameWithoutExtension(dllPath);
+                    
                     // Check if this is Newtonsoft.Json from any directory
                     if (dllPath.Contains("Newtonsoft.Json", StringComparison.OrdinalIgnoreCase))
                     {
@@ -857,7 +859,6 @@ namespace SLC_Package_Converter.Utilities
                     }
 
                     // Special handling for SLSRMLibrary
-                    string dllFileName = Path.GetFileNameWithoutExtension(dllPath);
                     if (dllFileName.Equals("SLSRMLibrary", StringComparison.OrdinalIgnoreCase))
                     {
                         string finalPath = dllPath;
