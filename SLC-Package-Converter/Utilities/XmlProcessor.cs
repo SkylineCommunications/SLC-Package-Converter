@@ -343,91 +343,22 @@ namespace SLC_Package_Converter.Utilities
             return name;
         }
 
-        // Finds SLSRMLibrary.dll in Dlls folders (solution level or project level).
-        // Returns the path to the DLL file if found, or null if not found.
-        // If multiple files are found, returns the one at solution level, or null if multiple files at different levels.
-        private static string? FindSlSrmLibraryDll(string destinationCsprojPath)
+        // Checks if SLSRMLibrary.dll exists in the solution-level Dlls folder.
+        // The Dlls folder is always at solution level (same level as .sln file).
+        private static bool SlSrmLibraryDllExists(string destinationCsprojPath)
         {
             try
             {
-                // Get the directory of the destination csproj (project level)
-                string projectDir = Path.GetDirectoryName(destinationCsprojPath) ?? string.Empty;
-                
                 // Get the solution directory (one level up from the project)
+                string projectDir = Path.GetDirectoryName(destinationCsprojPath) ?? string.Empty;
                 string solutionDir = Path.GetDirectoryName(projectDir) ?? string.Empty;
+                string dllPath = Path.Combine(solutionDir, "Dlls", "SLSRMLibrary.dll");
                 
-                // Look for Dlls folder at solution level
-                string solutionDllsFolder = Path.Combine(solutionDir, "Dlls");
-                string? solutionLevelDll = null;
-                if (Directory.Exists(solutionDllsFolder))
-                {
-                    var solutionDlls = Directory.GetFiles(solutionDllsFolder, "SLSRMLibrary.dll", SearchOption.TopDirectoryOnly);
-                    if (solutionDlls.Length == 1)
-                    {
-                        solutionLevelDll = solutionDlls[0];
-                        Logger.LogInfo($"Found SLSRMLibrary.dll at solution level: {solutionLevelDll}");
-                    }
-                    else if (solutionDlls.Length > 1)
-                    {
-                        Logger.LogWarning($"Multiple SLSRMLibrary.dll files found at solution level in {solutionDllsFolder}. Cannot determine which to use.");
-                        return null;
-                    }
-                }
-                
-                // Look for Dlls folder at project level
-                string projectDllsFolder = Path.Combine(projectDir, "Dlls");
-                string? projectLevelDll = null;
-                if (Directory.Exists(projectDllsFolder))
-                {
-                    var projectDlls = Directory.GetFiles(projectDllsFolder, "SLSRMLibrary.dll", SearchOption.TopDirectoryOnly);
-                    if (projectDlls.Length == 1)
-                    {
-                        projectLevelDll = projectDlls[0];
-                        Logger.LogInfo($"Found SLSRMLibrary.dll at project level: {projectLevelDll}");
-                    }
-                    else if (projectDlls.Length > 1)
-                    {
-                        Logger.LogWarning($"Multiple SLSRMLibrary.dll files found at project level in {projectDllsFolder}. Cannot determine which to use.");
-                        return null;
-                    }
-                }
-                
-                // If both solution and project level DLLs exist, prefer solution level
-                if (solutionLevelDll != null && projectLevelDll != null)
-                {
-                    Logger.LogWarning($"SLSRMLibrary.dll found at both solution and project level. Using solution level: {solutionLevelDll}");
-                    return solutionLevelDll;
-                }
-                
-                // Return whichever was found (or null if neither)
-                return solutionLevelDll ?? projectLevelDll;
+                return File.Exists(dllPath);
             }
-            catch (Exception ex)
+            catch
             {
-                Logger.LogError($"Error finding SLSRMLibrary.dll: {ex.Message}");
-                return null;
-            }
-        }
-
-        // Gets the relative path from the csproj file to the SLSRMLibrary.dll file.
-        private static string GetRelativePathToSlSrmLibrary(string csprojPath, string dllPath)
-        {
-            try
-            {
-                string csprojDir = Path.GetDirectoryName(csprojPath) ?? string.Empty;
-                Uri csprojUri = new Uri(csprojDir + Path.DirectorySeparatorChar);
-                Uri dllUri = new Uri(dllPath);
-                string relativePath = Uri.UnescapeDataString(csprojUri.MakeRelativeUri(dllUri).ToString());
-                
-                // Convert forward slashes to backslashes for Windows paths
-                relativePath = relativePath.Replace('/', '\\');
-                
-                return relativePath;
-            }
-            catch (Exception ex)
-            {
-                Logger.LogError($"Error calculating relative path: {ex.Message}");
-                return dllPath; // Fall back to absolute path
+                return false;
             }
         }
 
@@ -585,8 +516,9 @@ namespace SLC_Package_Converter.Utilities
                     destinationProject.Add(referenceGroup);
                 }
 
-                // Find SLSRMLibrary.dll in the repository (if it exists)
-                string? slSrmLibraryPath = FindSlSrmLibraryDll(destinationCsprojPath);
+                // Check if SLSRMLibrary.dll exists in the solution-level Dlls folder
+                bool slSrmLibraryExists = SlSrmLibraryDllExists(destinationCsprojPath);
+                const string SlSrmLibraryRelativePath = @"..\Dlls\SLSRMLibrary.dll";
 
                 bool hasDataMinerFilesReferences = false;
                 bool hasNewtonsoftJsonReference = false;
@@ -608,45 +540,26 @@ namespace SLC_Package_Converter.Utilities
                     // Special handling for SLSRMLibrary
                     if (includeAttribute != null && includeAttribute.Value.Equals("SLSRMLibrary", StringComparison.OrdinalIgnoreCase))
                     {
-                        if (slSrmLibraryPath != null)
+                        // Update HintPath to point to solution-level Dlls folder
+                        var hintPathElement = reference.Element(ns + "HintPath") ?? reference.Element("HintPath");
+                        if (hintPathElement != null)
                         {
-                            // Update the reference to point to the DLL in the Dlls folder
-                            string relativePath = GetRelativePathToSlSrmLibrary(destinationCsprojPath, slSrmLibraryPath);
-                            var hintPathElement = reference.Element(ns + "HintPath") ?? reference.Element("HintPath");
-                            if (hintPathElement != null)
-                            {
-                                hintPathElement.Value = relativePath;
-                            }
-                            else
-                            {
-                                // Add HintPath if it doesn't exist
-                                reference.Add(new XElement("HintPath", relativePath));
-                            }
-                            Logger.LogInfo($"Updated SLSRMLibrary reference to use DLL at: {relativePath}");
+                            hintPathElement.Value = SlSrmLibraryRelativePath;
                         }
-                        else if (!string.IsNullOrEmpty(hintPath) && 
-                                 (hintPath.Contains(@"Skyline DataMiner\Files\", StringComparison.OrdinalIgnoreCase) ||
-                                  hintPath.Contains("Skyline DataMiner/Files/", StringComparison.OrdinalIgnoreCase)))
+                        else
                         {
-                            // Reference points to C:\Skyline DataMiner\Files\ but no DLL found in repo
-                            // Update the path to point to solution-level Dlls folder (user must add file manually)
-                            string projectDir = Path.GetDirectoryName(destinationCsprojPath) ?? string.Empty;
-                            string solutionDir = Path.GetDirectoryName(projectDir) ?? string.Empty;
-                            string expectedDllPath = Path.Combine(solutionDir, "Dlls", "SLSRMLibrary.dll");
-                            string relativePath = GetRelativePathToSlSrmLibrary(destinationCsprojPath, expectedDllPath);
-                            
-                            var hintPathElement = reference.Element(ns + "HintPath") ?? reference.Element("HintPath");
-                            if (hintPathElement != null)
-                            {
-                                hintPathElement.Value = relativePath;
-                            }
-                            else
-                            {
-                                reference.Add(new XElement("HintPath", relativePath));
-                            }
-                            Logger.LogWarning($"SLSRMLibrary reference updated to point to Dlls folder: {relativePath}. The DLL file was not found in the repository. Please add SLSRMLibrary.dll to the Dlls folder manually.");
+                            // Add HintPath if it doesn't exist
+                            reference.Add(new XElement("HintPath", SlSrmLibraryRelativePath));
                         }
-                        // If it's some other path, keep it as-is
+                        
+                        if (slSrmLibraryExists)
+                        {
+                            Logger.LogInfo($"Updated SLSRMLibrary reference to use DLL at: {SlSrmLibraryRelativePath}");
+                        }
+                        else
+                        {
+                            Logger.LogWarning($"SLSRMLibrary reference updated to point to Dlls folder: {SlSrmLibraryRelativePath}. The DLL file was not found in the repository. Please add SLSRMLibrary.dll to the Dlls folder manually.");
+                        }
                         
                         // Add the (potentially modified) reference
                         var existingSlSrmRef = referenceGroup.Elements("Reference")
@@ -840,8 +753,9 @@ namespace SLC_Package_Converter.Utilities
                     projectElement.Add(referenceGroup);
                 }
 
-                // Find SLSRMLibrary.dll in the repository (if it exists)
-                string? slSrmLibraryPath = FindSlSrmLibraryDll(csprojPath);
+                // Check if SLSRMLibrary.dll exists in the solution-level Dlls folder
+                bool slSrmLibraryExists = SlSrmLibraryDllExists(csprojPath);
+                const string SlSrmLibraryRelativePath = @"..\Dlls\SLSRMLibrary.dll";
 
                 bool hasDataMinerFilesReferences = false;
                 bool hasNewtonsoftJsonReference = false;
@@ -861,24 +775,14 @@ namespace SLC_Package_Converter.Utilities
                     // Special handling for SLSRMLibrary
                     if (dllFileName.Equals("SLSRMLibrary", StringComparison.OrdinalIgnoreCase))
                     {
-                        string finalPath = dllPath;
-                        
-                        if (slSrmLibraryPath != null)
+                        // Always use solution-level Dlls folder path
+                        if (slSrmLibraryExists)
                         {
-                            // Use the DLL found in the Dlls folder
-                            finalPath = GetRelativePathToSlSrmLibrary(csprojPath, slSrmLibraryPath);
-                            Logger.LogInfo($"Updated SLSRMLibrary DLL reference to use DLL at: {finalPath}");
+                            Logger.LogInfo($"Adding SLSRMLibrary DLL reference: {SlSrmLibraryRelativePath}");
                         }
-                        else if (dllPath.Contains(@"Skyline DataMiner\Files\", StringComparison.OrdinalIgnoreCase) ||
-                                 dllPath.Contains("Skyline DataMiner/Files/", StringComparison.OrdinalIgnoreCase))
+                        else
                         {
-                            // Reference points to C:\Skyline DataMiner\Files\ but no DLL found in repo
-                            // Update the path to point to solution-level Dlls folder
-                            string projectDir = Path.GetDirectoryName(csprojPath) ?? string.Empty;
-                            string solutionDir = Path.GetDirectoryName(projectDir) ?? string.Empty;
-                            string expectedDllPath = Path.Combine(solutionDir, "Dlls", "SLSRMLibrary.dll");
-                            finalPath = GetRelativePathToSlSrmLibrary(csprojPath, expectedDllPath);
-                            Logger.LogWarning($"SLSRMLibrary DLL reference updated to point to Dlls folder: {finalPath}. The DLL file was not found in the repository. Please add SLSRMLibrary.dll to the Dlls folder manually.");
+                            Logger.LogWarning($"Adding SLSRMLibrary DLL reference: {SlSrmLibraryRelativePath}. The DLL file was not found in the repository. Please add SLSRMLibrary.dll to the Dlls folder manually.");
                         }
                         
                         // Check if reference already exists
@@ -889,10 +793,9 @@ namespace SLC_Package_Converter.Utilities
                         {
                             XElement referenceElement = new XElement("Reference",
                                 new XAttribute("Include", dllFileName),
-                                new XElement("HintPath", finalPath)
+                                new XElement("HintPath", SlSrmLibraryRelativePath)
                             );
                             referenceGroup.Add(referenceElement);
-                            Logger.LogInfo($"Adding SLSRMLibrary DLL reference: '{finalPath}'");
                         }
                         continue;
                     }
