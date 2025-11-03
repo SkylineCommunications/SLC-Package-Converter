@@ -458,7 +458,7 @@ namespace SLC_Package_Converter.Utilities
                     // Check if this is Newtonsoft.Json - skip as it's included transitively via Skyline.DataMiner.Dev.Automation
                     if (packageName.Equals("Newtonsoft.Json", StringComparison.OrdinalIgnoreCase))
                     {
-                        Logger.LogInfo($"Skipping explicit Newtonsoft.Json package reference. It is automatically included as a transitive dependency via Skyline.DataMiner.Dev.Automation.");
+                        Logger.LogInfo($"Skipping explicit {packageName} package reference. It is automatically included as a transitive dependency via Skyline.DataMiner.Dev.Automation.");
                         // Skip this reference - it's included transitively
                         continue;
                     }
