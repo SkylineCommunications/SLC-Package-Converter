@@ -433,8 +433,14 @@ namespace SLC_Package_Converter.Utilities
                     var includeAttribute = packageReference.Attribute("Include");
                     string? packageName = includeAttribute?.Value;
                     
+                    // Skip packages without an Include attribute
+                    if (string.IsNullOrEmpty(packageName))
+                    {
+                        continue;
+                    }
+                    
                     // Check if this is SLC.Lib.Automation (obsolete package)
-                    if (packageName != null && packageName.Equals("SLC.Lib.Automation", StringComparison.OrdinalIgnoreCase))
+                    if (packageName.Equals("SLC.Lib.Automation", StringComparison.OrdinalIgnoreCase))
                     {
                         hasSlcLibAutomationReference = true;
                         // Skip this reference - it will be replaced with NuGet package
@@ -442,7 +448,7 @@ namespace SLC_Package_Converter.Utilities
                     }
 
                     // Check if this is SLC.Lib.Common (obsolete package)
-                    if (packageName != null && packageName.Equals("SLC.Lib.Common", StringComparison.OrdinalIgnoreCase))
+                    if (packageName.Equals("SLC.Lib.Common", StringComparison.OrdinalIgnoreCase))
                     {
                         hasSlcLibCommonReference = true;
                         // Skip this reference - it will be replaced with NuGet package
@@ -450,7 +456,7 @@ namespace SLC_Package_Converter.Utilities
                     }
 
                     // Check if this is Newtonsoft.Json - skip as it's included transitively via Skyline.DataMiner.Dev.Automation
-                    if (packageName != null && packageName.Equals("Newtonsoft.Json", StringComparison.OrdinalIgnoreCase))
+                    if (packageName.Equals("Newtonsoft.Json", StringComparison.OrdinalIgnoreCase))
                     {
                         Logger.LogInfo($"Skipping explicit Newtonsoft.Json package reference. It is automatically included as a transitive dependency via Skyline.DataMiner.Dev.Automation.");
                         // Skip this reference - it's included transitively
