@@ -13,7 +13,6 @@
   - `SLC.Lib.Common` → `Skyline.DataMiner.Core.DataMinerSystem.Automation`
   - `AutomationScript_ClassLibrary` project references → `Skyline.DataMiner.Core.DataMinerSystem.Automation`
   - References to `C:\Skyline DataMiner\Files\` → `Skyline.DataMiner.Dev.Automation` (version 10.4.0.22)
-  - Explicit references to packages that are already included transitively (e.g., `Newtonsoft.Json`) are skipped since they're automatically included via `Skyline.DataMiner.Dev.Automation`
 - **Conservative handling of SLSRMLibrary**:
   - Does NOT automatically replace with NuGet package (safer for production SRM environments)
   - If `SLSRMLibrary.dll` exists in `Dlls` folder (solution or project level), references are updated to use that file
