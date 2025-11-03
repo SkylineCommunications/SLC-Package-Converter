@@ -25,11 +25,12 @@ namespace SLC_Package_Converter.Utilities
         // - If DLL doesn't exist in Dlls folder, a warning is logged for user to add it manually
         //
         // Note: The following packages are automatically included as transitive dependencies
-        // when Skyline.DataMiner.Dev.Automation is added and do not need explicit references:
-        // - Skyline.DataMiner.Dev.Common
-        // - Skyline.DataMiner.Files.SLAnalyticsTypes
-        // - Skyline.DataMiner.Files.SLManagedAutomation
-        // - Newtonsoft.Json (via Skyline.DataMiner.Dev.Common)
+        // when Skyline.DataMiner.Dev.Automation is added. These are documented here for reference,
+        // and Newtonsoft.Json is actively filtered out to prevent duplicate explicit references:
+        // - Skyline.DataMiner.Dev.Common (direct dependency)
+        // - Skyline.DataMiner.Files.SLAnalyticsTypes (direct dependency)
+        // - Skyline.DataMiner.Files.SLManagedAutomation (direct dependency)
+        // - Newtonsoft.Json (via Skyline.DataMiner.Dev.Common) - actively filtered
         // - SharpZipLib (via Skyline.DataMiner.Dev.Common)
         // - Skyline.DataMiner.Files.DataMinerMessageBroker.API (via Skyline.DataMiner.Dev.Common)
         // - Skyline.DataMiner.Files.protobufnet (via Skyline.DataMiner.Dev.Common)
