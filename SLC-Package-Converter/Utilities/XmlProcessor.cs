@@ -91,7 +91,9 @@ namespace SLC_Package_Converter.Utilities
                                 projectName = scriptName!;
                             }
                             
-                            // Handle numeric suffixes: keep _63000 (special), remove others (normal)
+                            // Handle numeric suffixes intelligently:
+                            // - Normal numeric suffixes (_1, _2, _69, etc.) are removed as they are typically temporary development artifacts
+                            // - The special _63000 suffix is preserved as it indicates a DataMiner library project (precompiled automation script library)
                             string newName = RemoveNumericSuffixExceptSpecial(projectName);
 
                             // Check for duplicate project names after suffix handling
@@ -323,6 +325,12 @@ namespace SLC_Package_Converter.Utilities
         }
 
         // Removes numeric suffixes from names, but preserves the special _63000 suffix.
+        // 
+        // Why different treatment for _63000?
+        // - Normal numeric suffixes (_1, _2, _69, etc.) are temporary development artifacts that should be removed
+        // - The _63000 suffix is a DataMiner convention for library projects (precompiled automation script libraries)
+        //   and must be preserved to maintain compatibility with existing library references
+        //
         // This provides consistent handling across the codebase for project names, file names, and directory names.
         public static string RemoveNumericSuffixExceptSpecial(string name)
         {
@@ -332,12 +340,12 @@ namespace SLC_Package_Converter.Utilities
                 string suffix = match.Groups[1].Value;
                 if (suffix == "63000")
                 {
-                    // Keep _63000 suffix as-is (special case)
+                    // Keep _63000 suffix as-is - this is a DataMiner library project suffix
                     return name;
                 }
                 else
                 {
-                    // Remove normal numeric suffixes (like _1, _2, _69)
+                    // Remove normal numeric suffixes (like _1, _2, _69) - these are temporary development artifacts
                     return Regex.Replace(name, @"_\d+$", string.Empty);
                 }
             }

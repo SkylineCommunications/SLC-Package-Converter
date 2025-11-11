@@ -24,6 +24,39 @@
   - The DataMiner Package Project is always named "Package"
   - The Solution name uses the source solution file name by default, or can be customized using `--solutionName`
 
+## 📋 Multiple EXE Blocks Support
+
+The tool **fully supports automation scripts with multiple EXE blocks**. Each EXE block in your XML file will be processed as a separate automation script project.
+
+### How It Works
+
+When an automation script XML file contains multiple `<Exe>` elements, the tool:
+1. Creates a separate project for each EXE block
+2. Extracts the project name from each EXE block's `[Project:...]` reference
+3. Handles numeric suffixes intelligently (see below)
+
+### Numeric Suffix Handling
+
+Project names with numeric suffixes are handled as follows:
+
+- **Normal numeric suffixes** (e.g., `_1`, `_2`, `_69`) are **removed** from project names
+  - Example: `MyScript_1` → `MyScript`
+  - Example: `MyAutomation_2` → `MyAutomation`
+  - These suffixes are typically temporary development artifacts and are cleaned up during conversion
+
+- **Special `_63000` suffix** is **preserved**
+  - Example: `MyLibrary_63000` → `MyLibrary_63000`
+  - This suffix is used in DataMiner for library projects (precompiled automation script libraries)
+  - Preserving it maintains compatibility with existing DataMiner library references
+
+### Important Notes
+
+- ✅ **Multiple EXE blocks are fully supported** - there is no limit on the number of EXE blocks per XML file
+- ⚠️ **Avoid duplicate project names**: After suffix removal, if multiple EXE blocks would result in the same project name, the tool will report an error and skip that file
+  - Example: Having both `MyScript_1` and `MyScript_2` in the same XML would cause a conflict (both become `MyScript`)
+  - Solution: Ensure each EXE block has a unique base name, or use the `_63000` suffix for library projects
+- 💡 **Best practice**: Use distinct project names for different EXE blocks rather than relying on numeric suffixes
+
 ## 🚀 Usage
 
 ### 1. Download the Latest Release

@@ -77,14 +77,14 @@ namespace SLC_Package_Converter.Utilities
                     // Check if the folder name ends with ".Tests"
                     if (dir.Name.EndsWith(".Tests", StringComparison.OrdinalIgnoreCase))
                     {
-                        // Extract the part before ".Tests", apply the suffix removal, and add ".Tests" back
+                        // Extract the part before ".Tests", apply the suffix removal (preserves _63000), and add ".Tests" back
                         string baseName = dir.Name.Substring(0, dir.Name.Length - ".Tests".Length);
                         string sanitizedBaseName = XmlProcessor.RemoveNumericSuffixExceptSpecial(baseName);
                         destinationDirPath = Path.Combine(destDir, sanitizedBaseName + ".Tests");
                     }
                     else
                     {
-                        // Apply consistent suffix removal that preserves _63000
+                        // Apply intelligent suffix removal: removes _1, _2, etc. but preserves _63000 (DataMiner library suffix)
                         string sanitizedDirName = XmlProcessor.RemoveNumericSuffixExceptSpecial(dir.Name);
                         destinationDirPath = Path.Combine(destDir, sanitizedDirName);
                     }
@@ -137,7 +137,7 @@ namespace SLC_Package_Converter.Utilities
                     string fileNameWithoutExtension = Path.GetFileNameWithoutExtension(file.Name);
                     string fileExtension = file.Extension;
 
-                    // Apply consistent suffix removal that preserves _63000
+                    // Apply intelligent suffix removal: removes _1, _2, etc. but preserves _63000 (DataMiner library suffix)
                     string sanitizedFileName = XmlProcessor.RemoveNumericSuffixExceptSpecial(fileNameWithoutExtension);
 
                     // Recombine the sanitized file name with the original extension
