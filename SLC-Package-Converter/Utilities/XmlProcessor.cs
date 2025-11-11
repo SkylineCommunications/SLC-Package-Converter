@@ -91,7 +91,14 @@ namespace SLC_Package_Converter.Utilities
                                 projectName = scriptName!;
                             }
                             
-                            // Handle numeric suffixes: remove _1 and _63000, keep _2, _3, etc.
+                            // Skip EXE blocks with _63000 suffix (AutomationScript_ClassLibrary - folder will be excluded)
+                            if (projectName.EndsWith("_63000", StringComparison.OrdinalIgnoreCase))
+                            {
+                                Logger.LogInfo($"Skipping EXE block '{projectName}' - AutomationScript_ClassLibrary references are excluded.");
+                                continue;
+                            }
+                            
+                            // Handle numeric suffixes: remove _1, keep _2, _3, etc.
                             string newName = RemoveNumericSuffixExceptSpecial(projectName);
 
                             // Check for duplicate project names and auto-append numeric suffix if needed
@@ -330,12 +337,12 @@ namespace SLC_Package_Converter.Utilities
             }
         }
 
-        // Removes _1 and _63000 suffixes, but preserves _2, _3, _4, etc.
+        // Removes _1 suffix only, but preserves _2, _3, _4, etc.
         // 
         // Suffix handling rules:
         // - _1 is removed (treated as the "first" or default instance)
         // - _2, _3, _4, etc. are preserved (support multiple EXE blocks)
-        // - _63000 is removed (AutomationScript_ClassLibrary folder is now excluded)
+        // - _63000 EXE blocks are skipped entirely (not processed at all) since AutomationScript_ClassLibrary folder is excluded
         //
         // This provides consistent handling across the codebase for project names, file names, and directory names.
         public static string RemoveNumericSuffixExceptSpecial(string name)
@@ -344,10 +351,10 @@ namespace SLC_Package_Converter.Utilities
             if (match.Success)
             {
                 string suffix = match.Groups[1].Value;
-                if (suffix == "1" || suffix == "63000")
+                if (suffix == "1")
                 {
-                    // Remove _1 and _63000 suffixes
-                    return Regex.Replace(name, @"_(1|63000)$", string.Empty);
+                    // Remove _1 suffix only
+                    return Regex.Replace(name, @"_1$", string.Empty);
                 }
                 else
                 {
