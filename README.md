@@ -39,24 +39,24 @@ When an automation script XML file contains multiple `<Exe>` elements, the tool:
 
 Project names with numeric suffixes are handled as follows:
 
-- **Normal numeric suffixes** (e.g., `_1`, `_2`, `_69`) are **removed** from project names
-  - Example: `MyScript_1` → `MyScript`
-  - Example: `MyAutomation_2` → `MyAutomation`
-  - These suffixes are typically temporary development artifacts and are cleaned up during conversion
+- **Numeric suffixes** (e.g., `_1`, `_2`, `_3`) are **preserved** to support multiple EXE blocks
+  - Example: `MyScript_1` → `MyScript_1`
+  - Example: `MyAutomation_2` → `MyAutomation_2`
+  - These suffixes allow you to have multiple EXE blocks in the same XML file with related names
 
-- **Special `_63000` suffix** is **preserved**
-  - Example: `MyLibrary_63000` → `MyLibrary_63000`
-  - This suffix is used in DataMiner for library projects (precompiled automation script libraries)
-  - Preserving it maintains compatibility with existing DataMiner library references
+- **Special `_63000` suffix** is **removed**
+  - Example: `MyLibrary_63000` → `MyLibrary`
+  - This suffix was previously used for library projects, but the `AutomationScript_ClassLibrary` folder is now excluded and replaced by NuGet packages
+  
+- **Automatic collision handling**: If multiple EXE blocks result in the same project name (after removing `_63000`), the tool automatically appends `_2`, `_3`, etc.
+  - Example: If two EXE blocks both have name `MyScript`, they become `MyScript` and `MyScript_2`
 
 ### Important Notes
 
 - ✅ **Multiple EXE blocks are fully supported** - there is no limit on the number of EXE blocks per XML file
-- ⚠️ **Avoid duplicate project names**: After suffix removal, if multiple EXE blocks would result in the same project name, the tool will report an error and skip that file
-  - Example: Having both `MyScript_1` and `MyScript_2` in the same XML would cause a conflict (both become `MyScript`)
-  - Solution: Ensure each EXE block has a unique base name, or use the `_63000` suffix for library projects
-- 💡 **Best practice**: Use distinct project names for different EXE blocks rather than relying on numeric suffixes
-- ℹ️ **Note about AutomationScript_ClassLibrary**: The `AutomationScript_ClassLibrary` folder is excluded during conversion as its functionality is replaced by the `Skyline.DataMiner.Core.DataMinerSystem.Automation` NuGet package. This doesn't affect multiple EXE block support.
+- ✅ **Automatic naming conflict resolution**: When name collisions occur, numeric suffixes are automatically added
+- 💡 **Best practice**: Use distinct base names or existing numeric suffixes (`_1`, `_2`) for different EXE blocks
+- ℹ️ **Note about AutomationScript_ClassLibrary**: The `AutomationScript_ClassLibrary` folder is excluded during conversion as its functionality is replaced by the `Skyline.DataMiner.Core.DataMinerSystem.Automation` NuGet package. The `_63000` suffix is removed accordingly.
 
 ## 🚀 Usage
 

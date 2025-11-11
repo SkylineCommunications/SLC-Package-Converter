@@ -91,17 +91,23 @@ namespace SLC_Package_Converter.Utilities
                                 projectName = scriptName!;
                             }
                             
-                            // Handle numeric suffixes intelligently:
-                            // - Normal numeric suffixes (_1, _2, _69, etc.) are removed as they are typically temporary development artifacts
-                            // - The special _63000 suffix is preserved as it indicates a DataMiner library project (precompiled automation script library)
+                            // Handle numeric suffixes: remove _63000, keep others (_1, _2, etc.)
                             string newName = RemoveNumericSuffixExceptSpecial(projectName);
 
-                            // Check for duplicate project names after suffix handling
+                            // Check for duplicate project names and auto-append numeric suffix if needed
                             if (processedProjectNames.Contains(newName))
                             {
-                                Logger.LogError($"Conflict detected: Multiple EXE blocks would result in the same project name '{newName}'. Original project: '{projectName}'. This typically happens when multiple EXE blocks have different normal numeric suffixes (e.g., _1, _2) that get removed. Skipping this file.");
-                                fileProcessed = false;
-                                break; // Exit the foreach loop to skip this entire file
+                                // Find the next available numeric suffix
+                                int counter = 2;
+                                string uniqueName;
+                                do
+                                {
+                                    uniqueName = $"{newName}_{counter}";
+                                    counter++;
+                                } while (processedProjectNames.Contains(uniqueName));
+                                
+                                Logger.LogInfo($"Name collision detected for '{newName}'. Using '{uniqueName}' instead.");
+                                newName = uniqueName;
                             }
                             processedProjectNames.Add(newName);
 
@@ -324,12 +330,11 @@ namespace SLC_Package_Converter.Utilities
             }
         }
 
-        // Removes numeric suffixes from names, but preserves the special _63000 suffix.
+        // Removes the _63000 suffix if present, but preserves all other numeric suffixes.
         // 
-        // Why different treatment for _63000?
-        // - Normal numeric suffixes (_1, _2, _69, etc.) are temporary development artifacts that should be removed
-        // - The _63000 suffix is a DataMiner convention for library projects (precompiled automation script libraries)
-        //   and must be preserved to maintain compatibility with existing library references
+        // Why remove _63000?
+        // - The _63000 suffix was used for library projects but the AutomationScript_ClassLibrary folder is now excluded
+        // - Other numeric suffixes (_1, _2, _3, etc.) are preserved to support multiple EXE blocks in the same XML
         //
         // This provides consistent handling across the codebase for project names, file names, and directory names.
         public static string RemoveNumericSuffixExceptSpecial(string name)
@@ -340,13 +345,13 @@ namespace SLC_Package_Converter.Utilities
                 string suffix = match.Groups[1].Value;
                 if (suffix == "63000")
                 {
-                    // Keep _63000 suffix as-is - this is a DataMiner library project suffix
-                    return name;
+                    // Remove _63000 suffix - library functionality is now handled via NuGet packages
+                    return Regex.Replace(name, @"_63000$", string.Empty);
                 }
                 else
                 {
-                    // Remove normal numeric suffixes (like _1, _2, _69) - these are temporary development artifacts
-                    return Regex.Replace(name, @"_\d+$", string.Empty);
+                    // Keep all other numeric suffixes (like _1, _2, _3) - these support multiple EXE blocks
+                    return name;
                 }
             }
             return name;
