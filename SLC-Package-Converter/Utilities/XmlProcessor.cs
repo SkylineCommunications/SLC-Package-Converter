@@ -10,6 +10,7 @@ namespace SLC_Package_Converter.Utilities
         // Constants for DataMiner Files references
         private const string DataMinerFilesPath = @"C:\Skyline DataMiner\Files\";
         private const string AutomationPackageName = "Skyline.DataMiner.Dev.Automation";
+        private const string AutomationPackageVersion = "10.4.0.22";
         private const string NewtonsoftJsonPackageName = "Newtonsoft.Json";
 
         // Deprecated/Obsolete packages that are automatically replaced:
@@ -664,10 +665,10 @@ namespace SLC_Package_Converter.Utilities
         {
             try
             {
-                // Use dotnet add package to add the latest version (updates if already present)
-                string addPackageCommand = $"dotnet add \"{csprojPath}\" package {AutomationPackageName} --source https://api.nuget.org/v3/index.json";
+                // Use dotnet add package with exact version (as defined in AutomationPackageVersion constant)
+                string addPackageCommand = $"dotnet add \"{csprojPath}\" package {AutomationPackageName} --version \"{AutomationPackageVersion}\" --source https://api.nuget.org/v3/index.json";
                 CommandExecutor.ExecuteCommand(addPackageCommand);
-                Logger.LogInfo($"Added latest stable NuGet package '{AutomationPackageName}'.");
+                Logger.LogInfo($"Added NuGet package '{AutomationPackageName}' with version {AutomationPackageVersion}.");
             }
             catch (Exception ex)
             {
