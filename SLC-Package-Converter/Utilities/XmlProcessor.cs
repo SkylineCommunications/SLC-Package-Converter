@@ -91,7 +91,7 @@ namespace SLC_Package_Converter.Utilities
                                 projectName = scriptName!;
                             }
                             
-                            // Handle numeric suffixes: remove _63000, keep others (_1, _2, etc.)
+                            // Handle numeric suffixes: remove _1 and _63000, keep _2, _3, etc.
                             string newName = RemoveNumericSuffixExceptSpecial(projectName);
 
                             // Check for duplicate project names and auto-append numeric suffix if needed
@@ -330,11 +330,12 @@ namespace SLC_Package_Converter.Utilities
             }
         }
 
-        // Removes the _63000 suffix if present, but preserves all other numeric suffixes.
+        // Removes _1 and _63000 suffixes, but preserves _2, _3, _4, etc.
         // 
-        // Why remove _63000?
-        // - The _63000 suffix was used for library projects but the AutomationScript_ClassLibrary folder is now excluded
-        // - Other numeric suffixes (_1, _2, _3, etc.) are preserved to support multiple EXE blocks in the same XML
+        // Suffix handling rules:
+        // - _1 is removed (treated as the "first" or default instance)
+        // - _2, _3, _4, etc. are preserved (support multiple EXE blocks)
+        // - _63000 is removed (AutomationScript_ClassLibrary folder is now excluded)
         //
         // This provides consistent handling across the codebase for project names, file names, and directory names.
         public static string RemoveNumericSuffixExceptSpecial(string name)
@@ -343,14 +344,14 @@ namespace SLC_Package_Converter.Utilities
             if (match.Success)
             {
                 string suffix = match.Groups[1].Value;
-                if (suffix == "63000")
+                if (suffix == "1" || suffix == "63000")
                 {
-                    // Remove _63000 suffix - library functionality is now handled via NuGet packages
-                    return Regex.Replace(name, @"_63000$", string.Empty);
+                    // Remove _1 and _63000 suffixes
+                    return Regex.Replace(name, @"_(1|63000)$", string.Empty);
                 }
                 else
                 {
-                    // Keep all other numeric suffixes (like _1, _2, _3) - these support multiple EXE blocks
+                    // Keep all other numeric suffixes (like _2, _3, _4) - these support multiple EXE blocks
                     return name;
                 }
             }
