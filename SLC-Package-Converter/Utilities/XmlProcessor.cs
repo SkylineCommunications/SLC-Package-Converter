@@ -98,13 +98,13 @@ namespace SLC_Package_Converter.Utilities
                                 continue;
                             }
                             
-                            // Handle numeric suffixes: remove _1, keep _2, _3, etc.
+                            // Remove all numeric suffixes from project name (_1, _2, _4, _6, etc.)
                             string newName = RemoveNumericSuffixExceptSpecial(projectName);
 
                             // Check for duplicate project names and auto-append numeric suffix if needed
                             if (processedProjectNames.Contains(newName))
                             {
-                                // Find the next available numeric suffix
+                                // Find the next available numeric suffix (starting from _2)
                                 int counter = 2;
                                 string uniqueName;
                                 do
@@ -337,32 +337,18 @@ namespace SLC_Package_Converter.Utilities
             }
         }
 
-        // Removes _1 suffix only, but preserves _2, _3, _4, etc.
+        // Removes all numeric suffixes from names.
         // 
         // Suffix handling rules:
-        // - _1 is removed (treated as the "first" or default instance)
-        // - _2, _3, _4, etc. are preserved (support multiple EXE blocks)
-        // - _63000 EXE blocks are skipped entirely (not processed at all) since AutomationScript_ClassLibrary folder is excluded
+        // - All numeric suffixes (_1, _2, _4, _6, etc.) are removed
+        // - _63000 EXE blocks are skipped entirely in XML processing (not processed at all)
+        // - When collisions occur after suffix removal, automatic numbering (_2, _3, etc.) is applied
         //
         // This provides consistent handling across the codebase for project names, file names, and directory names.
         public static string RemoveNumericSuffixExceptSpecial(string name)
         {
-            var match = Regex.Match(name, @"_(\d+)$");
-            if (match.Success)
-            {
-                string suffix = match.Groups[1].Value;
-                if (suffix == "1")
-                {
-                    // Remove _1 suffix only
-                    return Regex.Replace(name, @"_1$", string.Empty);
-                }
-                else
-                {
-                    // Keep all other numeric suffixes (like _2, _3, _4) - these support multiple EXE blocks
-                    return name;
-                }
-            }
-            return name;
+            // Remove any numeric suffix at the end (e.g., _1, _2, _69, _4, _6, etc.)
+            return Regex.Replace(name, @"_\d+$", string.Empty);
         }
 
         // Checks if a DLL exists in the solution-level Dlls folder.

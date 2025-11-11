@@ -77,14 +77,14 @@ namespace SLC_Package_Converter.Utilities
                     // Check if the folder name ends with ".Tests"
                     if (dir.Name.EndsWith(".Tests", StringComparison.OrdinalIgnoreCase))
                     {
-                        // Extract the part before ".Tests", apply the suffix removal (removes _1), and add ".Tests" back
+                        // Extract the part before ".Tests", apply the suffix removal (removes all numeric suffixes), and add ".Tests" back
                         string baseName = dir.Name.Substring(0, dir.Name.Length - ".Tests".Length);
                         string sanitizedBaseName = XmlProcessor.RemoveNumericSuffixExceptSpecial(baseName);
                         destinationDirPath = Path.Combine(destDir, sanitizedBaseName + ".Tests");
                     }
                     else
                     {
-                        // Apply intelligent suffix removal: removes _1 but preserves _2, _3, etc. (for multiple EXE blocks)
+                        // Apply suffix removal: removes all numeric suffixes (_1, _2, _4, etc.)
                         // Note: _63000 folders are already excluded via ExcludedDirs in Program.cs
                         string sanitizedDirName = XmlProcessor.RemoveNumericSuffixExceptSpecial(dir.Name);
                         destinationDirPath = Path.Combine(destDir, sanitizedDirName);
@@ -138,7 +138,7 @@ namespace SLC_Package_Converter.Utilities
                     string fileNameWithoutExtension = Path.GetFileNameWithoutExtension(file.Name);
                     string fileExtension = file.Extension;
 
-                    // Apply intelligent suffix removal: removes _1 but preserves _2, _3, etc. (for multiple EXE blocks)
+                    // Apply suffix removal: removes all numeric suffixes (_1, _2, _4, etc.)
                     // Note: _63000 files are skipped entirely in XML processing
                     string sanitizedFileName = XmlProcessor.RemoveNumericSuffixExceptSpecial(fileNameWithoutExtension);
 

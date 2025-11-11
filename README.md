@@ -39,29 +39,28 @@ When an automation script XML file contains multiple `<Exe>` elements, the tool:
 
 Project names with numeric suffixes are handled as follows:
 
-- **`_1` suffix** is **removed** (treated as the first/default instance)
+- **All numeric suffixes are removed** from project names
   - Example: `MyScript_1` → `MyScript`
-  - This allows the first EXE block to use the base name without a suffix
-
-- **Other numeric suffixes** (e.g., `_2`, `_3`, `_4`) are **preserved** to support multiple EXE blocks
-  - Example: `MyAutomation_2` → `MyAutomation_2`
-  - Example: `MyAutomation_3` → `MyAutomation_3`
-  - These suffixes allow you to have multiple EXE blocks in the same XML file
+  - Example: `MyScript_2` → `MyScript`
+  - Example: `MyAutomation_4` → `MyAutomation`
+  - Example: `MyAutomation_6` → `MyAutomation`
+  - This normalizes project names to their base names without numeric suffixes
 
 - **EXE blocks with `_63000` suffix** are **skipped entirely** (not processed)
   - Example: `MyLibrary_63000` → skipped (entire EXE block excluded from processing)
   - These reference `AutomationScript_ClassLibrary` projects whose folders are excluded and replaced by NuGet packages
   - The entire reference is removed from the XML output
   
-- **Automatic collision handling**: If multiple EXE blocks result in the same project name (after removing `_1`), the tool automatically appends `_2`, `_3`, etc.
+- **Automatic collision handling**: When multiple EXE blocks result in the same project name (after suffix removal), the tool automatically appends `_2`, `_3`, etc.
+  - Example: `MyScript_4` and `MyScript_6` → both become `MyScript` after suffix removal, so they become `MyScript` and `MyScript_2`
   - Example: Two EXE blocks both named `MyScript` → become `MyScript` and `MyScript_2`
-  - Example: `MyScript_1` and `MyScript` → both become `MyScript` after suffix removal, so they become `MyScript` and `MyScript_2`
+  - Example: Three EXE blocks all named `MyScript` → become `MyScript`, `MyScript_2`, and `MyScript_3`
 
 ### Important Notes
 
 - ✅ **Multiple EXE blocks are fully supported** - there is no limit on the number of EXE blocks per XML file
 - ✅ **Automatic naming conflict resolution**: When name collisions occur, numeric suffixes are automatically added starting from `_2`
-- 💡 **Best practice**: Use `_1` for the first instance, `_2`, `_3` for additional instances, or use distinct base names
+- 💡 **Best practice**: Use distinct base names for different EXE blocks, or let the tool handle collisions automatically
 - ℹ️ **Note about AutomationScript_ClassLibrary**: The `AutomationScript_ClassLibrary` folder is excluded during conversion as its functionality is replaced by the `Skyline.DataMiner.Core.DataMinerSystem.Automation` NuGet package. EXE blocks with `_63000` suffix are skipped entirely and removed from the XML.
 
 ## 🚀 Usage
