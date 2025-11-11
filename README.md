@@ -12,7 +12,9 @@
   - `SLC.Lib.Automation` → `Skyline.DataMiner.Core.DataMinerSystem.Automation`
   - `SLC.Lib.Common` → `Skyline.DataMiner.Core.DataMinerSystem.Automation`
   - `AutomationScript_ClassLibrary` project references → `Skyline.DataMiner.Core.DataMinerSystem.Automation`
-  - References to `C:\Skyline DataMiner\Files\` → `Skyline.DataMiner.Dev.Automation` (version 10.4.0.22)
+  - References to `C:\Skyline DataMiner\Files\` for DLLs included in `Skyline.DataMiner.Dev.Automation` (version 10.4.0.22):
+    - `SLManagedAutomation.dll`, `SLNetTypes.dll`, `SLLoggerUtil.dll`, `Skyline.DataMiner.Storage.Types.dll` → Removed (replaced by the NuGet package)
+    - Other DLLs (like `SLSRMLibrary.dll`) → Updated to point to `..\Dlls\` folder
 - **Conservative handling of SLSRMLibrary**:
   - Does NOT automatically replace with NuGet package (safer for production SRM environments)
   - If `SLSRMLibrary.dll` exists in `Dlls` folder (solution or project level), references are updated to use that file
