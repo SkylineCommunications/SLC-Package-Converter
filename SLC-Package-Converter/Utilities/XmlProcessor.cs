@@ -12,16 +12,6 @@ namespace SLC_Package_Converter.Utilities
         private const string AutomationPackageName = "Skyline.DataMiner.Dev.Automation";
         private const string AutomationPackageVersion = "10.4.0.22";
         private const string NewtonsoftJsonPackageName = "Newtonsoft.Json";
-        
-        // DLLs that are included in the Skyline.DataMiner.Dev.Automation package
-        // These should be excluded when the package is added
-        private static readonly HashSet<string> DllsIncludedInDevAutomationPackage = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-        {
-            "SLManagedAutomation",
-            "SLNetTypes",
-            "SLLoggerUtil",
-            "Skyline.DataMiner.Storage.Types"
-        };
 
         // Deprecated/Obsolete packages that are automatically replaced:
         // - SLC.Lib.Automation → Skyline.DataMiner.Core.DataMinerSystem.Automation
@@ -355,6 +345,16 @@ namespace SLC_Package_Converter.Utilities
             return name;
         }
 
+        // Checks if a DLL is included in the Skyline.DataMiner.Dev.Automation package
+        // These DLLs should be excluded when the package is added
+        private static bool IsDllIncludedInDevAutomationPackage(string dllNameWithoutExtension)
+        {
+            return dllNameWithoutExtension.Equals("SLManagedAutomation", StringComparison.OrdinalIgnoreCase) ||
+                   dllNameWithoutExtension.Equals("SLNetTypes", StringComparison.OrdinalIgnoreCase) ||
+                   dllNameWithoutExtension.Equals("SLLoggerUtil", StringComparison.OrdinalIgnoreCase) ||
+                   dllNameWithoutExtension.Equals("Skyline.DataMiner.Storage.Types", StringComparison.OrdinalIgnoreCase);
+        }
+
         // Checks if a DLL exists in the solution-level Dlls folder.
         // The Dlls folder is always at solution level (same level as .sln file).
         private static bool DllExistsInDllsFolder(string csprojPath, string dllFileName)
@@ -555,7 +555,7 @@ namespace SLC_Package_Converter.Utilities
                         string referenceName = includeAttribute?.Value ?? "Unknown";
                         
                         // Check if this DLL is included in the Dev.Automation package
-                        if (DllsIncludedInDevAutomationPackage.Contains(dllNameWithoutExtension))
+                        if (IsDllIncludedInDevAutomationPackage(dllNameWithoutExtension))
                         {
                             // Skip this reference - it will be replaced by the Dev.Automation package
                             Logger.LogInfo($"Excluding reference '{referenceName}' with HintPath '{hintPath}'. It will be replaced by the {AutomationPackageName} NuGet package.");
@@ -773,7 +773,7 @@ namespace SLC_Package_Converter.Utilities
                         dllPath.Contains("Skyline DataMiner/Files/", StringComparison.OrdinalIgnoreCase))
                     {
                         // Check if this DLL is included in the Dev.Automation package
-                        if (DllsIncludedInDevAutomationPackage.Contains(dllFileName))
+                        if (IsDllIncludedInDevAutomationPackage(dllFileName))
                         {
                             // Skip this reference - it will be replaced by the Dev.Automation package
                             Logger.LogInfo($"Excluding DLL reference '{dllPath}'. It will be replaced by the {AutomationPackageName} NuGet package.");
