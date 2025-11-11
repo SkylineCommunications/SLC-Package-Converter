@@ -12,6 +12,16 @@ namespace SLC_Package_Converter.Utilities
         private const string AutomationPackageName = "Skyline.DataMiner.Dev.Automation";
         private const string AutomationPackageVersion = "10.4.0.22";
         private const string NewtonsoftJsonPackageName = "Newtonsoft.Json";
+        
+        // DLLs that are included in the Skyline.DataMiner.Dev.Automation package
+        // These should be excluded when the package is added
+        private static readonly HashSet<string> DllsIncludedInDevAutomationPackage = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "SLManagedAutomation",
+            "SLNetTypes",
+            "SLLoggerUtil",
+            "Skyline.DataMiner.Storage.Types"
+        };
 
         // Deprecated/Obsolete packages that are automatically replaced:
         // - SLC.Lib.Automation → Skyline.DataMiner.Core.DataMinerSystem.Automation
@@ -20,9 +30,10 @@ namespace SLC_Package_Converter.Utilities
         // - Newtonsoft.Json → Newtonsoft.Json NuGet package
         // 
         // Special handling for DataMiner Files references:
-        // - All references to C:\Skyline DataMiner\Files\ are updated to point to ..\Dlls\ folder
-        // - This includes SLSRMLibrary and other DLL files
-        // - DLLs are NOT automatically replaced with NuGet packages (conservative approach)
+        // - References to C:\Skyline DataMiner\Files\ for DLLs included in Dev.Automation package are removed
+        //   (SLManagedAutomation, SLNetTypes, SLLoggerUtil, Skyline.DataMiner.Storage.Types)
+        // - Other DataMiner Files references (like SLSRMLibrary) are updated to point to ..\Dlls\ folder
+        // - The Skyline.DataMiner.Dev.Automation package is added when DataMiner Files references are found
         // - If DLL doesn't exist in Dlls folder, a warning is logged for user to add it manually
 
         // Processes XML files in the source directory.
@@ -539,8 +550,20 @@ namespace SLC_Package_Converter.Utilities
                         (hintPath.Contains(@"Skyline DataMiner\Files\", StringComparison.OrdinalIgnoreCase) ||
                          hintPath.Contains("Skyline DataMiner/Files/", StringComparison.OrdinalIgnoreCase)))
                     {
-                        // Update the HintPath to point to solution-level Dlls folder
                         string dllFileName = Path.GetFileName(hintPath);
+                        string dllNameWithoutExtension = Path.GetFileNameWithoutExtension(dllFileName);
+                        string referenceName = includeAttribute?.Value ?? "Unknown";
+                        
+                        // Check if this DLL is included in the Dev.Automation package
+                        if (DllsIncludedInDevAutomationPackage.Contains(dllNameWithoutExtension))
+                        {
+                            // Skip this reference - it will be replaced by the Dev.Automation package
+                            Logger.LogInfo($"Excluding reference '{referenceName}' with HintPath '{hintPath}'. It will be replaced by the {AutomationPackageName} NuGet package.");
+                            hasDataMinerFilesReferences = true;
+                            continue;
+                        }
+                        
+                        // For other DataMiner Files DLLs (like SLSRMLibrary), update the HintPath to point to solution-level Dlls folder
                         string newHintPath = $@"..\Dlls\{dllFileName}";
                         
                         var hintPathElement = reference.Element(ns + "HintPath") ?? reference.Element("HintPath");
@@ -549,7 +572,6 @@ namespace SLC_Package_Converter.Utilities
                             hintPathElement.Value = newHintPath;
                         }
                         
-                        string referenceName = includeAttribute?.Value ?? "Unknown";
                         bool dllExists = DllExistsInDllsFolder(destinationCsprojPath, dllFileName);
                         
                         if (dllExists)
@@ -746,11 +768,20 @@ namespace SLC_Package_Converter.Utilities
                     }
 
                     // Apply the same rules as HintPath processing in .csproj merge
-                    // Check if the DLL is in DataMiner Files directory - update path to Dlls folder
+                    // Check if the DLL is in DataMiner Files directory
                     if (dllPath.Contains(@"Skyline DataMiner\Files\", StringComparison.OrdinalIgnoreCase) ||
                         dllPath.Contains("Skyline DataMiner/Files/", StringComparison.OrdinalIgnoreCase))
                     {
-                        // Update the path to point to solution-level Dlls folder
+                        // Check if this DLL is included in the Dev.Automation package
+                        if (DllsIncludedInDevAutomationPackage.Contains(dllFileName))
+                        {
+                            // Skip this reference - it will be replaced by the Dev.Automation package
+                            Logger.LogInfo($"Excluding DLL reference '{dllPath}'. It will be replaced by the {AutomationPackageName} NuGet package.");
+                            hasDataMinerFilesReferences = true;
+                            continue;
+                        }
+                        
+                        // For other DataMiner Files DLLs (like SLSRMLibrary), update path to Dlls folder
                         string fullDllFileName = $"{dllFileName}.dll";
                         string newHintPath = $@"..\Dlls\{fullDllFileName}";
                         
