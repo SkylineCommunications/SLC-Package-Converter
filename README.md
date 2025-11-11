@@ -56,6 +56,7 @@ Project names with numeric suffixes are handled as follows:
   - Example: Having both `MyScript_1` and `MyScript_2` in the same XML would cause a conflict (both become `MyScript`)
   - Solution: Ensure each EXE block has a unique base name, or use the `_63000` suffix for library projects
 - 💡 **Best practice**: Use distinct project names for different EXE blocks rather than relying on numeric suffixes
+- ℹ️ **Note about AutomationScript_ClassLibrary**: The `AutomationScript_ClassLibrary` folder is excluded during conversion as its functionality is replaced by the `Skyline.DataMiner.Core.DataMinerSystem.Automation` NuGet package. This doesn't affect multiple EXE block support.
 
 ## 🚀 Usage
 
