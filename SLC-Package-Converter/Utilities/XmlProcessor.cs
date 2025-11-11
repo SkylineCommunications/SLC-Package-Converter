@@ -345,16 +345,6 @@ namespace SLC_Package_Converter.Utilities
             return name;
         }
 
-        // Checks if a DLL is included in the Skyline.DataMiner.Dev.Automation package
-        // These DLLs should be excluded when the package is added
-        private static bool IsDllIncludedInDevAutomationPackage(string dllNameWithoutExtension)
-        {
-            return dllNameWithoutExtension.Equals("SLManagedAutomation", StringComparison.OrdinalIgnoreCase) ||
-                   dllNameWithoutExtension.Equals("SLNetTypes", StringComparison.OrdinalIgnoreCase) ||
-                   dllNameWithoutExtension.Equals("SLLoggerUtil", StringComparison.OrdinalIgnoreCase) ||
-                   dllNameWithoutExtension.Equals("Skyline.DataMiner.Storage.Types", StringComparison.OrdinalIgnoreCase);
-        }
-
         // Checks if a DLL exists in the solution-level Dlls folder.
         // The Dlls folder is always at solution level (same level as .sln file).
         private static bool DllExistsInDllsFolder(string csprojPath, string dllFileName)
@@ -550,12 +540,13 @@ namespace SLC_Package_Converter.Utilities
                         (hintPath.Contains(@"Skyline DataMiner\Files\", StringComparison.OrdinalIgnoreCase) ||
                          hintPath.Contains("Skyline DataMiner/Files/", StringComparison.OrdinalIgnoreCase)))
                     {
-                        string dllFileName = Path.GetFileName(hintPath);
-                        string dllNameWithoutExtension = Path.GetFileNameWithoutExtension(dllFileName);
                         string referenceName = includeAttribute?.Value ?? "Unknown";
                         
-                        // Check if this DLL is included in the Dev.Automation package
-                        if (IsDllIncludedInDevAutomationPackage(dllNameWithoutExtension))
+                        // Check if this DLL is included in the Dev.Automation package (SLManagedAutomation, SLNetTypes, SLLoggerUtil, Skyline.DataMiner.Storage.Types)
+                        if (hintPath.Contains("SLManagedAutomation", StringComparison.OrdinalIgnoreCase) ||
+                            hintPath.Contains("SLNetTypes", StringComparison.OrdinalIgnoreCase) ||
+                            hintPath.Contains("SLLoggerUtil", StringComparison.OrdinalIgnoreCase) ||
+                            hintPath.Contains("Skyline.DataMiner.Storage.Types", StringComparison.OrdinalIgnoreCase))
                         {
                             // Skip this reference - it will be replaced by the Dev.Automation package
                             Logger.LogInfo($"Excluding reference '{referenceName}' with HintPath '{hintPath}'. It will be replaced by the {AutomationPackageName} NuGet package.");
@@ -564,6 +555,7 @@ namespace SLC_Package_Converter.Utilities
                         }
                         
                         // For other DataMiner Files DLLs (like SLSRMLibrary), update the HintPath to point to solution-level Dlls folder
+                        string dllFileName = Path.GetFileName(hintPath);
                         string newHintPath = $@"..\Dlls\{dllFileName}";
                         
                         var hintPathElement = reference.Element(ns + "HintPath") ?? reference.Element("HintPath");
@@ -772,8 +764,11 @@ namespace SLC_Package_Converter.Utilities
                     if (dllPath.Contains(@"Skyline DataMiner\Files\", StringComparison.OrdinalIgnoreCase) ||
                         dllPath.Contains("Skyline DataMiner/Files/", StringComparison.OrdinalIgnoreCase))
                     {
-                        // Check if this DLL is included in the Dev.Automation package
-                        if (IsDllIncludedInDevAutomationPackage(dllFileName))
+                        // Check if this DLL is included in the Dev.Automation package (SLManagedAutomation, SLNetTypes, SLLoggerUtil, Skyline.DataMiner.Storage.Types)
+                        if (dllPath.Contains("SLManagedAutomation", StringComparison.OrdinalIgnoreCase) ||
+                            dllPath.Contains("SLNetTypes", StringComparison.OrdinalIgnoreCase) ||
+                            dllPath.Contains("SLLoggerUtil", StringComparison.OrdinalIgnoreCase) ||
+                            dllPath.Contains("Skyline.DataMiner.Storage.Types", StringComparison.OrdinalIgnoreCase))
                         {
                             // Skip this reference - it will be replaced by the Dev.Automation package
                             Logger.LogInfo($"Excluding DLL reference '{dllPath}'. It will be replaced by the {AutomationPackageName} NuGet package.");
