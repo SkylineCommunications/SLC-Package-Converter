@@ -175,6 +175,29 @@ namespace SLC_Package_Converter.Utilities
                                 }
                                 var exeList = allExeElements.ToList();
                                 
+                                // Remove all EXE blocks with _63000 suffix (AutomationScript_ClassLibrary references)
+                                foreach (var exeToCheck in exeList.ToList())
+                                {
+                                    // Check by id attribute
+                                    string? exeIdValue = exeToCheck.Attribute("id")?.Value;
+                                    if (exeIdValue == "63000")
+                                    {
+                                        exeToCheck.Remove();
+                                        continue;
+                                    }
+                                    
+                                    // Check by project name in Value element
+                                    var checkValueElement = exeToCheck.Element(xmlNs + "Value") ?? exeToCheck.Element("Value");
+                                    if (checkValueElement != null)
+                                    {
+                                        string valueContent = checkValueElement.Value;
+                                        if (valueContent.Contains("[Project:") && valueContent.Contains("_63000"))
+                                        {
+                                            exeToCheck.Remove();
+                                        }
+                                    }
+                                }
+                                
                                 // Find the matching exe element by comparing the id attribute if present, or by index
                                 XElement? targetExe = null;
                                 string? exeId = exe.Attribute("id")?.Value;
@@ -234,6 +257,29 @@ namespace SLC_Package_Converter.Utilities
                                     allExeElements = xmlDoc.Descendants("Exe");
                                 }
                                 var exeList = allExeElements.ToList();
+                                
+                                // Remove all EXE blocks with _63000 suffix (AutomationScript_ClassLibrary references)
+                                foreach (var exeToCheck in exeList.ToList())
+                                {
+                                    // Check by id attribute
+                                    string? exeIdValue = exeToCheck.Attribute("id")?.Value;
+                                    if (exeIdValue == "63000")
+                                    {
+                                        exeToCheck.Remove();
+                                        continue;
+                                    }
+                                    
+                                    // Check by project name in Value element
+                                    var checkValueElement = exeToCheck.Element(xmlNs + "Value") ?? exeToCheck.Element("Value");
+                                    if (checkValueElement != null)
+                                    {
+                                        string valueContent = checkValueElement.Value;
+                                        if (valueContent.Contains("[Project:") && valueContent.Contains("_63000"))
+                                        {
+                                            exeToCheck.Remove();
+                                        }
+                                    }
+                                }
                                 
                                 // Find the matching exe element by comparing the id attribute if present, or by index
                                 XElement? targetExe = null;
