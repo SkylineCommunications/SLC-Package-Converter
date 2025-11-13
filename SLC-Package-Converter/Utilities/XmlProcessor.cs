@@ -92,15 +92,30 @@ namespace SLC_Package_Converter.Utilities
                                 projectName = scriptName!;
                             }
                             
-                            // Handle numeric suffixes: keep _63000 (special), remove others (normal)
+                            // Skip EXE blocks with _63000 suffix (AutomationScript_ClassLibrary - folder will be excluded)
+                            if (projectName.EndsWith("_63000", StringComparison.OrdinalIgnoreCase))
+                            {
+                                Logger.LogInfo($"Skipping EXE block '{projectName}' - AutomationScript_ClassLibrary references are excluded.");
+                                continue;
+                            }
+                            
+                            // Remove all numeric suffixes from project name (_1, _2, _4, _6, etc.)
                             string newName = RemoveNumericSuffixExceptSpecial(projectName);
 
-                            // Check for duplicate project names after suffix handling
+                            // Check for duplicate project names and auto-append numeric suffix if needed
                             if (processedProjectNames.Contains(newName))
                             {
-                                Logger.LogError($"Conflict detected: Multiple EXE blocks would result in the same project name '{newName}'. Original project: '{projectName}'. This typically happens when multiple EXE blocks have different normal numeric suffixes (e.g., _1, _2) that get removed. Skipping this file.");
-                                fileProcessed = false;
-                                break; // Exit the foreach loop to skip this entire file
+                                // Find the next available numeric suffix (starting from _2)
+                                int counter = 2;
+                                string uniqueName;
+                                do
+                                {
+                                    uniqueName = $"{newName}_{counter}";
+                                    counter++;
+                                } while (processedProjectNames.Contains(uniqueName));
+                                
+                                Logger.LogInfo($"Name collision detected for '{newName}'. Using '{uniqueName}' instead.");
+                                newName = uniqueName;
                             }
                             processedProjectNames.Add(newName);
 
@@ -161,6 +176,29 @@ namespace SLC_Package_Converter.Utilities
                                 }
                                 var exeList = allExeElements.ToList();
                                 
+                                // Remove all EXE blocks with _63000 suffix (AutomationScript_ClassLibrary references)
+                                foreach (var exeToCheck in exeList.ToList())
+                                {
+                                    // Check by id attribute
+                                    string? exeIdValue = exeToCheck.Attribute("id")?.Value;
+                                    if (exeIdValue == "63000")
+                                    {
+                                        exeToCheck.Remove();
+                                        continue;
+                                    }
+                                    
+                                    // Check by project name in Value element
+                                    var checkValueElement = exeToCheck.Element(xmlNs + "Value") ?? exeToCheck.Element("Value");
+                                    if (checkValueElement != null)
+                                    {
+                                        string valueContent = checkValueElement.Value;
+                                        if (valueContent.Contains("[Project:") && valueContent.Contains("_63000"))
+                                        {
+                                            exeToCheck.Remove();
+                                        }
+                                    }
+                                }
+                                
                                 // Find the matching exe element by comparing the id attribute if present, or by index
                                 XElement? targetExe = null;
                                 string? exeId = exe.Attribute("id")?.Value;
@@ -220,6 +258,29 @@ namespace SLC_Package_Converter.Utilities
                                     allExeElements = xmlDoc.Descendants("Exe");
                                 }
                                 var exeList = allExeElements.ToList();
+                                
+                                // Remove all EXE blocks with _63000 suffix (AutomationScript_ClassLibrary references)
+                                foreach (var exeToCheck in exeList.ToList())
+                                {
+                                    // Check by id attribute
+                                    string? exeIdValue = exeToCheck.Attribute("id")?.Value;
+                                    if (exeIdValue == "63000")
+                                    {
+                                        exeToCheck.Remove();
+                                        continue;
+                                    }
+                                    
+                                    // Check by project name in Value element
+                                    var checkValueElement = exeToCheck.Element(xmlNs + "Value") ?? exeToCheck.Element("Value");
+                                    if (checkValueElement != null)
+                                    {
+                                        string valueContent = checkValueElement.Value;
+                                        if (valueContent.Contains("[Project:") && valueContent.Contains("_63000"))
+                                        {
+                                            exeToCheck.Remove();
+                                        }
+                                    }
+                                }
                                 
                                 // Find the matching exe element by comparing the id attribute if present, or by index
                                 XElement? targetExe = null;
@@ -323,26 +384,18 @@ namespace SLC_Package_Converter.Utilities
             }
         }
 
-        // Removes numeric suffixes from names, but preserves the special _63000 suffix.
+        // Removes all numeric suffixes from names.
+        // 
+        // Suffix handling rules:
+        // - All numeric suffixes (_1, _2, _4, _6, etc.) are removed
+        // - _63000 EXE blocks are skipped entirely in XML processing (not processed at all)
+        // - When collisions occur after suffix removal, automatic numbering (_2, _3, etc.) is applied
+        //
         // This provides consistent handling across the codebase for project names, file names, and directory names.
         public static string RemoveNumericSuffixExceptSpecial(string name)
         {
-            var match = Regex.Match(name, @"_(\d+)$");
-            if (match.Success)
-            {
-                string suffix = match.Groups[1].Value;
-                if (suffix == "63000")
-                {
-                    // Keep _63000 suffix as-is (special case)
-                    return name;
-                }
-                else
-                {
-                    // Remove normal numeric suffixes (like _1, _2, _69)
-                    return Regex.Replace(name, @"_\d+$", string.Empty);
-                }
-            }
-            return name;
+            // Remove any numeric suffix at the end (e.g., _1, _2, _69, _4, _6, etc.)
+            return Regex.Replace(name, @"_\d+$", string.Empty);
         }
 
         // Checks if a DLL exists in the solution-level Dlls folder.

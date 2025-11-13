@@ -26,6 +26,45 @@
   - The DataMiner Package Project is always named "Package"
   - The Solution name uses the source solution file name by default, or can be customized using `--solutionName`
 
+## 📋 Multiple EXE Blocks Support
+
+The tool **fully supports automation scripts with multiple EXE blocks**. Each EXE block in your XML file will be processed as a separate automation script project.
+
+### How It Works
+
+When an automation script XML file contains multiple `<Exe>` elements, the tool:
+1. Creates a separate project for each EXE block
+2. Extracts the project name from each EXE block's `[Project:...]` reference
+3. Handles numeric suffixes intelligently (see below)
+
+### Numeric Suffix Handling
+
+Project names with numeric suffixes are handled as follows:
+
+- **All numeric suffixes are removed** from project names
+  - Example: `MyScript_1` → `MyScript`
+  - Example: `MyScript_2` → `MyScript`
+  - Example: `MyAutomation_4` → `MyAutomation`
+  - Example: `MyAutomation_6` → `MyAutomation`
+  - This normalizes project names to their base names without numeric suffixes
+
+- **EXE blocks with `_63000` suffix** are **skipped entirely** (not processed)
+  - Example: `MyLibrary_63000` → skipped (entire EXE block excluded from processing)
+  - These reference `AutomationScript_ClassLibrary` projects whose folders are excluded and replaced by NuGet packages
+  - The entire reference is removed from the XML output
+  
+- **Automatic collision handling**: When multiple EXE blocks result in the same project name (after suffix removal), the tool automatically appends `_2`, `_3`, etc.
+  - Example: `MyScript_4` and `MyScript_6` → both become `MyScript` after suffix removal, so they become `MyScript` and `MyScript_2`
+  - Example: Two EXE blocks both named `MyScript` → become `MyScript` and `MyScript_2`
+  - Example: Three EXE blocks all named `MyScript` → become `MyScript`, `MyScript_2`, and `MyScript_3`
+
+### Important Notes
+
+- ✅ **Multiple EXE blocks are fully supported** - there is no limit on the number of EXE blocks per XML file
+- ✅ **Automatic naming conflict resolution**: When name collisions occur, numeric suffixes are automatically added starting from `_2`
+- 💡 **Best practice**: Use distinct base names for different EXE blocks, or let the tool handle collisions automatically
+- ℹ️ **Note about AutomationScript_ClassLibrary**: The `AutomationScript_ClassLibrary` folder is excluded during conversion as its functionality is replaced by the `Skyline.DataMiner.Core.DataMinerSystem.Automation` NuGet package. EXE blocks with `_63000` suffix are skipped entirely and removed from the XML.
+
 ## 🚀 Usage
 
 ### 1. Download the Latest Release
