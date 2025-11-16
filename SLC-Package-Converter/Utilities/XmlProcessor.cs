@@ -698,6 +698,7 @@ namespace SLC_Package_Converter.Utilities
         {
             try
             {
+                Logger.LogInfo($"Adding Skyline.DataMiner.Utils.SecureCoding.Analyzers package to project: {csprojPath}");
                 // Use dotnet add package to add the latest version (updates if already present)
                 string addPackageCommand = $"dotnet add \"{csprojPath}\" package Skyline.DataMiner.Utils.SecureCoding.Analyzers --source https://api.nuget.org/v3/index.json";
                 CommandExecutor.ExecuteCommand(addPackageCommand);
@@ -705,7 +706,7 @@ namespace SLC_Package_Converter.Utilities
             }
             catch (Exception ex)
             {
-                Logger.LogError($"Error adding SecureCoding.Analyzers package: {ex.Message}");
+                Logger.LogError($"Error adding SecureCoding.Analyzers package to {csprojPath}: {ex.Message}");
                 throw;
             }
         }
@@ -715,6 +716,7 @@ namespace SLC_Package_Converter.Utilities
         {
             try
             {
+                Logger.LogInfo($"Adding Skyline.DataMiner.Core.DataMinerSystem.Automation package to project: {csprojPath}");
                 // Use dotnet add package to add the latest version (updates if already present)
                 string addPackageCommand = $"dotnet add \"{csprojPath}\" package Skyline.DataMiner.Core.DataMinerSystem.Automation --source https://api.nuget.org/v3/index.json";
                 CommandExecutor.ExecuteCommand(addPackageCommand);
@@ -722,7 +724,7 @@ namespace SLC_Package_Converter.Utilities
             }
             catch (Exception ex)
             {
-                Logger.LogError($"Error adding DataMinerSystem.Automation package: {ex.Message}");
+                Logger.LogError($"Error adding DataMinerSystem.Automation package to {csprojPath}: {ex.Message}");
                 throw;
             }
         }
@@ -732,6 +734,7 @@ namespace SLC_Package_Converter.Utilities
         {
             try
             {
+                Logger.LogInfo($"Adding {AutomationPackageName} package (version {AutomationPackageVersion}) to project: {csprojPath}");
                 // Use dotnet add package with exact version (as defined in AutomationPackageVersion constant)
                 string addPackageCommand = $"dotnet add \"{csprojPath}\" package {AutomationPackageName} --version \"{AutomationPackageVersion}\" --source https://api.nuget.org/v3/index.json";
                 CommandExecutor.ExecuteCommand(addPackageCommand);
@@ -739,7 +742,7 @@ namespace SLC_Package_Converter.Utilities
             }
             catch (Exception ex)
             {
-                Logger.LogError($"Error adding {AutomationPackageName} package: {ex.Message}");
+                Logger.LogError($"Error adding {AutomationPackageName} package to {csprojPath}: {ex.Message}");
                 throw;
             }
         }
@@ -749,6 +752,7 @@ namespace SLC_Package_Converter.Utilities
         {
             try
             {
+                Logger.LogInfo($"Adding {NewtonsoftJsonPackageName} package to project: {csprojPath}");
                 // Use dotnet add package to add the latest version (updates if already present)
                 string addPackageCommand = $"dotnet add \"{csprojPath}\" package {NewtonsoftJsonPackageName} --source https://api.nuget.org/v3/index.json";
                 CommandExecutor.ExecuteCommand(addPackageCommand);
@@ -756,7 +760,7 @@ namespace SLC_Package_Converter.Utilities
             }
             catch (Exception ex)
             {
-                Logger.LogError($"Error adding {NewtonsoftJsonPackageName} package: {ex.Message}");
+                Logger.LogError($"Error adding {NewtonsoftJsonPackageName} package to {csprojPath}: {ex.Message}");
                 throw;
             }
         }
