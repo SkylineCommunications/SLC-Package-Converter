@@ -79,24 +79,83 @@ class Program
         try
         {
             // Log the start of the package conversion process
-            Logger.LogInfo("Starting the package conversion process.");
+            Logger.LogInfo("=== SLC-Package-Converter Started ===");
+            Logger.LogInfo($"Version: {System.Reflection.Assembly.GetExecutingAssembly().GetName().Version}");
+            Logger.LogInfo($"Execution Time: {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
+            Logger.LogInfo($"Current Working Directory: {Directory.GetCurrentDirectory()}");
+            Logger.LogInfo($"Executable Location: {System.Reflection.Assembly.GetExecutingAssembly().Location}");
+            
+            // Log environment information
+            Logger.LogInfo("=== Environment Information ===");
+            Logger.LogInfo($"OS Version: {Environment.OSVersion}");
+            Logger.LogInfo($".NET Runtime Version: {Environment.Version}");
+            Logger.LogInfo($"Machine Name: {Environment.MachineName}");
+            Logger.LogInfo($"User: {Environment.UserName}");
+            Logger.LogInfo($"Process ID: {Environment.ProcessId}");
+            
+            // Log dotnet version
+            try
+            {
+                var dotnetVersion = CommandExecutor.ExecuteCommand("dotnet --version", returnOutput: true);
+                Logger.LogInfo($"Dotnet SDK Version: {dotnetVersion?.Trim() ?? "Unable to determine"}");
+            }
+            catch
+            {
+                Logger.LogWarning("Unable to determine dotnet SDK version");
+            }
+            
+            // Log all command-line arguments
+            Logger.LogInfo("=== Command-Line Arguments ===");
+            Logger.LogInfo($"Total arguments: {args.Length}");
+            if (args.Length > 0)
+            {
+                Logger.LogInfo("Arguments received:");
+                for (int i = 0; i < args.Length; i++)
+                {
+                    Logger.LogInfo($"  [{i}]: {args[i]}");
+                }
+            }
+            else
+            {
+                Logger.LogInfo("No arguments provided");
+            }
+            
+            // Log parsed parameters
+            Logger.LogInfo("=== Parsed Parameters ===");
+            Logger.LogInfo($"SourceDirectory: {SourceDirectory ?? "(not set)"}");
+            Logger.LogInfo($"DestinationDirectory: {DestinationDirectory ?? "(not set)"}");
+            Logger.LogInfo($"SolutionName: {SolutionName ?? "(not set)"}");
+            Logger.LogInfo($"IncludeGitHubWorkflow: {IncludeGitHubWorkflow}");
+            Logger.LogInfo($"BranchName: {BranchName}");
+            Logger.LogInfo($"PreserveHistory: {PreserveHistory}");
+            
+            Logger.LogInfo("=== Starting Package Conversion Process ===");
 
             // Validate the existence of the source directory
             if (!Directory.Exists(SourceDirectory))
             {
-                Logger.LogError("Source directory does not exist.");
+                Logger.LogError($"Source directory does not exist: {SourceDirectory}");
                 return;
             }
+            Logger.LogInfo($"Source directory validated: {SourceDirectory}");
 
             // If DestinationDirectory is not provided, generate a temporary directory
             if (string.IsNullOrEmpty(DestinationDirectory))
             {
+                Logger.LogInfo("=== Destination Directory Not Specified - Creating New Package Project ===");
+                
                 var currentSln = SolutionHelper.GetSolutionFile(SourceDirectory);
                 string? currentSlnNameWithoutExtension = null;
                 
                 if (currentSln != null)
                 {
                     currentSlnNameWithoutExtension = Path.GetFileNameWithoutExtension(currentSln);
+                    Logger.LogInfo($"Found source solution file: {currentSln}");
+                    Logger.LogInfo($"Source solution name (without extension): {currentSlnNameWithoutExtension}");
+                }
+                else
+                {
+                    Logger.LogInfo("No solution file found in source directory");
                 }
                 
                 // Determine the solution name and project name:
@@ -105,9 +164,14 @@ class Program
                 string packageProjectName = "Package";
                 string solutionName = !string.IsNullOrEmpty(SolutionName) ? SolutionName : (currentSlnNameWithoutExtension ?? "Package");
                 
+                Logger.LogInfo($"Project Name: {packageProjectName}");
+                Logger.LogInfo($"Solution Name: {solutionName}");
+                
                 DestinationDirectory = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
-                Logger.LogInfo("Destination Directory not specified. Creating a new branch with the new project.");
+                Logger.LogInfo($"Generated temporary destination directory: {DestinationDirectory}");
+                
                 Directory.CreateDirectory(DestinationDirectory);
+                Logger.LogInfo($"Created destination directory: {DestinationDirectory}");
 
                 // Command to create a new project and solution in the destination directory
                 string createProjectCommand =
@@ -115,27 +179,65 @@ class Program
                     $"dotnet new dataminer-package-project -o \"{packageProjectName}\" -n \"{packageProjectName}\" -auth \"\" -cdp true -I {IncludeGitHubWorkflow} --force && " +
                     $"dotnet new sln -n \"{solutionName}\" && " +
                     $"dotnet sln add \"{packageProjectName}/{packageProjectName}.csproj\"";
+                    
+                Logger.LogInfo("=== Creating Package Project ===");
+                Logger.LogInfo($"Command to execute: {createProjectCommand}");
+                
                 CommandExecutor.ExecuteCommand(createProjectCommand);
 
                 branchMode = true; // Enable branch mode
+                Logger.LogInfo("Branch mode enabled");
+            }
+            else
+            {
+                Logger.LogInfo($"Using provided destination directory: {DestinationDirectory}");
             }
 
             // Retrieve the solution file from the source directory
+            Logger.LogInfo("=== Retrieving Solution Files ===");
             string? sourceSlnFile = SolutionHelper.GetSolutionFile(SourceDirectory);
+            if (sourceSlnFile != null)
+            {
+                Logger.LogInfo($"Source solution file: {sourceSlnFile}");
+            }
+            else
+            {
+                Logger.LogInfo("No source solution file found");
+            }
 
             // Retrieve the solution file from the destination directory
             string? destSlnFile = SolutionHelper.GetSolutionFile(DestinationDirectory);
+            if (destSlnFile != null)
+            {
+                Logger.LogInfo($"Destination solution file: {destSlnFile}");
+            }
+            else
+            {
+                Logger.LogInfo("No destination solution file found");
+            }
 
             // Process XML files in the source directory and copy other directories
+            Logger.LogInfo("=== Processing XML Files ===");
             var processedFiles = XmlProcessor.ProcessXmlFiles(SourceDirectory, DestinationDirectory, destSlnFile);
+            Logger.LogInfo($"Processed {processedFiles.Count} XML/csproj files");
+            
+            Logger.LogInfo("=== Copying Other Directories ===");
             DirectoryHelper.CopyOtherDirectories(SourceDirectory, DestinationDirectory, ExcludedDirs, ExcludedSubDirs, ExcludedFiles, processedFiles);
+            Logger.LogInfo("Directory copying completed");
+            
+            Logger.LogInfo("=== Adding Shared Project References ===");
             SolutionHelper.AddSharedProjectReferences(sourceSlnFile, destSlnFile);
 
             // If branch mode is enabled, create a branch and copy files
             if (branchMode)
             {
+                Logger.LogInfo("=== Creating Branch and Copying Files ===");
+                Logger.LogInfo($"Branch name: {BranchName}");
+                Logger.LogInfo($"Preserve history: {PreserveHistory}");
                 BranchManager.CreateBranchAndCopyFiles(SourceDirectory, DestinationDirectory, BranchName, PreserveHistory);
             }
+            
+            Logger.LogInfo("=== Package Conversion Completed Successfully ===");
         }
         catch (DirectoryNotFoundException ex)
         {
