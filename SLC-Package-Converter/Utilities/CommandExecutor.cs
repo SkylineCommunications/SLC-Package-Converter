@@ -29,7 +29,7 @@
                 var processStartInfo = new System.Diagnostics.ProcessStartInfo
                 {
                     FileName = "cmd.exe",
-                    Arguments = $"/c {command}",
+                    Arguments = $"/c \"{command}\"",
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,
                     UseShellExecute = false,
@@ -82,6 +82,56 @@
                     return null;
                 }
                 throw;
+            }
+        }
+
+        // Executes a command and returns true if successful (exit code 0), false otherwise.
+        public static bool ExecuteCommandWithExitCode(string command)
+        {
+            try
+            {
+                var processStartInfo = new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = "cmd.exe",
+                    Arguments = $"/c \"{command}\"",
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                };
+
+                using (var process = System.Diagnostics.Process.Start(processStartInfo))
+                {
+                    if (process == null)
+                    {
+                        Logger.LogError($"Failed to start process for command '{command}'");
+                        return false;
+                    }
+
+                    using (var reader = process.StandardOutput)
+                    {
+                        string output = reader.ReadToEnd();
+                        
+                        using (var errorReader = process.StandardError)
+                        {
+                            string error = errorReader.ReadToEnd();
+                            if (!string.IsNullOrEmpty(error))
+                            {
+                                Logger.LogError(error);
+                            }
+                        }
+
+                        process.WaitForExit();
+                        
+                        // Return true only if exit code is 0 (success)
+                        return process.ExitCode == 0;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError($"Error executing command '{command}': {ex.Message}");
+                return false;
             }
         }
     }

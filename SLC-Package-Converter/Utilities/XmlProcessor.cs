@@ -745,18 +745,103 @@ namespace SLC_Package_Converter.Utilities
         }
 
         // Adds the Newtonsoft.Json package to a project using dotnet add command.
+        // If dotnet command fails, falls back to manually adding PackageReference to .csproj.
         private static void AddNewtonsoftJsonPackage(string csprojPath)
         {
             try
             {
-                // Use dotnet add package to add the latest version (updates if already present)
+                // Try using dotnet add package to add the latest version (updates if already present)
                 string addPackageCommand = $"dotnet add \"{csprojPath}\" package {NewtonsoftJsonPackageName} --source https://api.nuget.org/v3/index.json";
-                CommandExecutor.ExecuteCommand(addPackageCommand);
-                Logger.LogInfo($"Added latest stable NuGet package '{NewtonsoftJsonPackageName}' as a replacement for Newtonsoft.Json DLL reference.");
+                bool success = CommandExecutor.ExecuteCommandWithExitCode(addPackageCommand);
+                
+                if (success)
+                {
+                    Logger.LogInfo($"Added latest stable NuGet package '{NewtonsoftJsonPackageName}' as a replacement for Newtonsoft.Json DLL reference.");
+                }
+                else
+                {
+                    // Fallback: manually add PackageReference to .csproj
+                    Logger.LogWarning($"'dotnet add package' command failed. Manually adding '{NewtonsoftJsonPackageName}' PackageReference to .csproj file.");
+                    AddPackageReferenceManually(csprojPath, NewtonsoftJsonPackageName, null);
+                }
             }
             catch (Exception ex)
             {
                 Logger.LogError($"Error adding {NewtonsoftJsonPackageName} package: {ex.Message}");
+                // Don't throw - log the error and try to continue with manual addition
+                try
+                {
+                    Logger.LogWarning($"Attempting to manually add '{NewtonsoftJsonPackageName}' PackageReference to .csproj file.");
+                    AddPackageReferenceManually(csprojPath, NewtonsoftJsonPackageName, null);
+                }
+                catch (Exception innerEx)
+                {
+                    Logger.LogError($"Failed to manually add {NewtonsoftJsonPackageName} package: {innerEx.Message}");
+                }
+            }
+        }
+
+        // Manually adds a PackageReference to a .csproj file.
+        // This is used as a fallback when 'dotnet add package' command fails.
+        private static void AddPackageReferenceManually(string csprojPath, string packageName, string? version)
+        {
+            try
+            {
+                XDocument csprojDoc = XDocument.Load(csprojPath);
+                XElement projectElement = csprojDoc.Element("Project")!;
+                
+                // Find or create ItemGroup for PackageReferences
+                var itemGroups = projectElement.Elements("ItemGroup").ToList();
+                XElement? packageReferenceGroup = itemGroups.FirstOrDefault(ig => ig.Elements("PackageReference").Any());
+                
+                if (packageReferenceGroup == null)
+                {
+                    packageReferenceGroup = new XElement("ItemGroup");
+                    projectElement.Add(packageReferenceGroup);
+                }
+                
+                // Check if package already exists
+                var existingPackageRef = packageReferenceGroup.Elements("PackageReference")
+                    .FirstOrDefault(e => e.Attribute("Include")?.Value?.Equals(packageName, StringComparison.OrdinalIgnoreCase) == true);
+                
+                if (existingPackageRef == null)
+                {
+                    // Add new PackageReference
+                    XElement packageRef = new XElement("PackageReference", new XAttribute("Include", packageName));
+                    
+                    // Add version if specified
+                    if (!string.IsNullOrEmpty(version))
+                    {
+                        packageRef.Add(new XAttribute("Version", version));
+                    }
+                    
+                    packageReferenceGroup.Add(packageRef);
+                    
+                    // Save the updated .csproj
+                    csprojDoc.Save(csprojPath);
+                    
+                    // Remove xmlns attribute from the saved .csproj file
+                    string xmlContent = File.ReadAllText(csprojPath);
+                    xmlContent = Regex.Replace(xmlContent, @"\sxmlns=""[^""]+""", "");
+                    File.WriteAllText(csprojPath, xmlContent);
+                    
+                    if (string.IsNullOrEmpty(version))
+                    {
+                        Logger.LogInfo($"Manually added PackageReference for '{packageName}' (latest version) to .csproj file.");
+                    }
+                    else
+                    {
+                        Logger.LogInfo($"Manually added PackageReference for '{packageName}' version {version} to .csproj file.");
+                    }
+                }
+                else
+                {
+                    Logger.LogInfo($"PackageReference for '{packageName}' already exists in .csproj file.");
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError($"Error manually adding PackageReference for '{packageName}': {ex.Message}");
                 throw;
             }
         }
