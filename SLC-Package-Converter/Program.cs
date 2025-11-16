@@ -114,6 +114,13 @@ class Program
                 {
                     Logger.LogInfo($"  [{i}]: {args[i]}");
                 }
+                
+                // Create a reproduction command
+                Logger.LogInfo("=== Manual Reproduction Command ===");
+                string executableName = Path.GetFileName(System.Reflection.Assembly.GetExecutingAssembly().Location);
+                string reproCommand = $"{executableName.Replace(".dll", ".exe")} {string.Join(" ", args.Select(arg => arg.Contains(" ") ? $"\"{arg}\"" : arg))}";
+                Logger.LogInfo($"To manually reproduce this execution, run:");
+                Logger.LogInfo($"  {reproCommand}");
             }
             else
             {
@@ -182,6 +189,11 @@ class Program
                     
                 Logger.LogInfo("=== Creating Package Project ===");
                 Logger.LogInfo($"Command to execute: {createProjectCommand}");
+                Logger.AddReproductionStep($"Create destination directory: mkdir \"{DestinationDirectory}\"");
+                Logger.AddReproductionStep($"Change to destination directory: cd \"{DestinationDirectory}\"");
+                Logger.AddReproductionStep($"Create DataMiner package project: dotnet new dataminer-package-project -o \"{packageProjectName}\" -n \"{packageProjectName}\" -auth \"\" -cdp true -I {IncludeGitHubWorkflow} --force");
+                Logger.AddReproductionStep($"Create solution file: dotnet new sln -n \"{solutionName}\"");
+                Logger.AddReproductionStep($"Add project to solution: dotnet sln add \"{packageProjectName}/{packageProjectName}.csproj\"");
                 
                 CommandExecutor.ExecuteCommand(createProjectCommand);
 
@@ -238,6 +250,9 @@ class Program
             }
             
             Logger.LogInfo("=== Package Conversion Completed Successfully ===");
+            
+            // Output the manual reproduction guide at the end
+            Logger.LogReproductionGuide();
         }
         catch (DirectoryNotFoundException ex)
         {

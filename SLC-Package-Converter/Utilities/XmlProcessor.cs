@@ -863,6 +863,7 @@ namespace SLC_Package_Converter.Utilities
                 // Use dotnet add package to add the latest version (updates if already present)
                 string addPackageCommand = $"dotnet add \"{csprojPath}\" package Skyline.DataMiner.Utils.SecureCoding.Analyzers --source https://api.nuget.org/v3/index.json";
                 Logger.LogInfo($"Command to execute: {addPackageCommand}");
+                Logger.AddReproductionStep($"Add SecureCoding.Analyzers package: {addPackageCommand}");
                 
                 CommandExecutor.ExecuteCommand(addPackageCommand);
                 Logger.LogInfo("SecureCoding.Analyzers package added/updated successfully.");
@@ -892,6 +893,7 @@ namespace SLC_Package_Converter.Utilities
                 // Use dotnet add package to add the latest version (updates if already present)
                 string addPackageCommand = $"dotnet add \"{csprojPath}\" package Skyline.DataMiner.Core.DataMinerSystem.Automation --source https://api.nuget.org/v3/index.json";
                 Logger.LogInfo($"Command to execute: {addPackageCommand}");
+                Logger.AddReproductionStep($"Add DataMinerSystem.Automation package: {addPackageCommand}");
                 
                 CommandExecutor.ExecuteCommand(addPackageCommand);
                 Logger.LogInfo("Replaced AutomationScript_ClassLibrary reference with NuGet package Skyline.DataMiner.Core.DataMinerSystem.Automation");
@@ -922,6 +924,7 @@ namespace SLC_Package_Converter.Utilities
                 // Use dotnet add package with exact version (as defined in AutomationPackageVersion constant)
                 string addPackageCommand = $"dotnet add \"{csprojPath}\" package {AutomationPackageName} --version \"{AutomationPackageVersion}\" --source https://api.nuget.org/v3/index.json";
                 Logger.LogInfo($"Command to execute: {addPackageCommand}");
+                Logger.AddReproductionStep($"Add Dev.Automation package: {addPackageCommand}");
                 
                 CommandExecutor.ExecuteCommand(addPackageCommand);
                 Logger.LogInfo($"Added NuGet package '{AutomationPackageName}' with version {AutomationPackageVersion}.");
@@ -952,6 +955,7 @@ namespace SLC_Package_Converter.Utilities
                 // Use dotnet add package to add the latest version (updates if already present)
                 string addPackageCommand = $"dotnet add \"{csprojPath}\" package {NewtonsoftJsonPackageName} --source https://api.nuget.org/v3/index.json";
                 Logger.LogInfo($"Command to execute: {addPackageCommand}");
+                Logger.AddReproductionStep($"Add Newtonsoft.Json package: {addPackageCommand}");
                 
                 CommandExecutor.ExecuteCommand(addPackageCommand);
                 Logger.LogInfo($"Added latest stable NuGet package '{NewtonsoftJsonPackageName}' as a replacement for Newtonsoft.Json DLL reference.");
