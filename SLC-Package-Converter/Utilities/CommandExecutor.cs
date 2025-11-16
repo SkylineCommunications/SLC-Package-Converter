@@ -41,12 +41,14 @@
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,
                     UseShellExecute = false,
-                    CreateNoWindow = true
+                    CreateNoWindow = true,
+                    WorkingDirectory = Directory.GetCurrentDirectory()
                 };
                 
                 Logger.LogInfo($"Process start info configured:");
                 Logger.LogInfo($"  FileName: {processStartInfo.FileName}");
                 Logger.LogInfo($"  Arguments: {processStartInfo.Arguments}");
+                Logger.LogInfo($"  WorkingDirectory: {processStartInfo.WorkingDirectory}");
                 Logger.LogInfo($"  UseShellExecute: {processStartInfo.UseShellExecute}");
                 Logger.LogInfo($"  CreateNoWindow: {processStartInfo.CreateNoWindow}");
                 Logger.LogInfo($"  RedirectStandardOutput: {processStartInfo.RedirectStandardOutput}");
