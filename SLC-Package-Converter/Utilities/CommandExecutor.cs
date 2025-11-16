@@ -26,6 +26,10 @@
         {
             try
             {
+                // Log the command being executed for debugging purposes
+                Logger.LogInfo($"Executing command: {command}");
+                Logger.LogInfo($"Working directory: {Directory.GetCurrentDirectory()}");
+
                 var processStartInfo = new System.Diagnostics.ProcessStartInfo
                 {
                     FileName = "cmd.exe",
@@ -51,13 +55,29 @@
                         using (var errorReader = process.StandardError)
                         {
                             string error = errorReader.ReadToEnd();
-                            if (!string.IsNullOrEmpty(error))
+                            
+                            process.WaitForExit();
+                            int exitCode = process.ExitCode;
+                            
+                            // Log exit code for debugging
+                            if (exitCode != 0)
                             {
-                                Logger.LogError(error);
+                                Logger.LogError($"Command exited with code {exitCode}");
+                            }
+                            
+                            // Log both stdout and stderr if there was an error (non-zero exit code or stderr output)
+                            if (!string.IsNullOrEmpty(error) || exitCode != 0)
+                            {
+                                if (!string.IsNullOrEmpty(output))
+                                {
+                                    Logger.LogInfo($"Command output (stdout):{Environment.NewLine}{output}");
+                                }
+                                if (!string.IsNullOrEmpty(error))
+                                {
+                                    Logger.LogError($"Command error output (stderr):{Environment.NewLine}{error}");
+                                }
                             }
                         }
-
-                        process.WaitForExit();
                         
                         if (returnOutput)
                         {
