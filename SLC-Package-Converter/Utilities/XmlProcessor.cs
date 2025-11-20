@@ -735,238 +735,141 @@ namespace SLC_Package_Converter.Utilities
             }
         }
 
-        // Validates a .csproj file before attempting to add packages and logs diagnostic information
-        private static void ValidateAndLogCsprojInfo(string csprojPath)
+
+
+        // Adds a PackageReference directly to the csproj XML file.
+        private static void AddPackageReferenceToXml(string csprojPath, string packageName, string? version = null)
         {
-            Logger.LogInfo("=== Validating and Debugging .csproj File ===");
-            Logger.LogInfo($"Project file path: {csprojPath}");
-            
-            if (!File.Exists(csprojPath))
-            {
-                Logger.LogError($"Project file does not exist: {csprojPath}");
-                return;
-            }
-            
-            Logger.LogInfo("Project file exists: YES");
-            
             try
             {
-                var fileInfo = new FileInfo(csprojPath);
-                Logger.LogInfo($"File size: {fileInfo.Length} bytes");
-                Logger.LogInfo($"Last modified: {fileInfo.LastWriteTime:yyyy-MM-dd HH:mm:ss}");
-                Logger.LogInfo($"Attributes: {fileInfo.Attributes}");
-                Logger.LogInfo($"Is read-only: {fileInfo.IsReadOnly}");
-                Logger.LogInfo($"Full path: {fileInfo.FullName}");
-                Logger.LogInfo($"Directory: {fileInfo.DirectoryName}");
+                // Load the csproj file
+                XDocument doc = XDocument.Load(csprojPath);
+                XElement? root = doc.Root;
                 
-                // Check directory existence
-                if (fileInfo.DirectoryName != null && Directory.Exists(fileInfo.DirectoryName))
+                if (root == null)
                 {
-                    Logger.LogInfo($"Parent directory exists: YES");
+                    Logger.LogError($"Failed to load csproj root element from: {csprojPath}");
+                    return;
+                }
+
+                // Find or create an ItemGroup for PackageReferences
+                XElement? packageReferenceGroup = root.Elements("ItemGroup")
+                    .FirstOrDefault(ig => ig.Elements("PackageReference").Any());
+
+                if (packageReferenceGroup == null)
+                {
+                    packageReferenceGroup = new XElement("ItemGroup");
+                    root.Add(packageReferenceGroup);
+                }
+
+                // Check if the package already exists
+                var existingPackage = packageReferenceGroup.Elements("PackageReference")
+                    .FirstOrDefault(pr => pr.Attribute("Include")?.Value == packageName);
+
+                if (existingPackage != null)
+                {
+                    // Update version if specified
+                    if (version != null)
+                    {
+                        var versionAttr = existingPackage.Attribute("Version");
+                        if (versionAttr != null)
+                        {
+                            versionAttr.Value = version;
+                        }
+                        else
+                        {
+                            existingPackage.Add(new XAttribute("Version", version));
+                        }
+                    }
+                    Logger.LogInfo($"Updated existing package reference: {packageName}" + (version != null ? $" to version {version}" : ""));
                 }
                 else
                 {
-                    Logger.LogWarning($"Parent directory does not exist or is null");
-                }
-                
-                // Try to read the file content
-                Logger.LogInfo("=== .csproj File Content ===");
-                string content = File.ReadAllText(csprojPath);
-                Logger.LogInfo($"Content length: {content.Length} characters");
-                Logger.LogInfo("First 500 characters of content:");
-                Logger.LogInfo(content.Substring(0, Math.Min(500, content.Length)));
-                if (content.Length > 500)
-                {
-                    Logger.LogInfo("... (content truncated)");
-                }
-                
-                // Try to load the XML to check for well-formedness
-                Logger.LogInfo("=== XML Structure Validation ===");
-                XDocument doc = XDocument.Load(csprojPath);
-                Logger.LogInfo("XML is well-formed: YES");
-                
-                // Log XML structure details
-                var root = doc.Root;
-                if (root != null)
-                {
-                    Logger.LogInfo($"Root element: {root.Name.LocalName}");
-                    Logger.LogInfo($"Root element namespace: {root.Name.Namespace}");
-                    Logger.LogInfo($"Sdk attribute: {root.Attribute("Sdk")?.Value ?? "(not set)"}");
+                    // Add new PackageReference
+                    XElement packageReference = new XElement("PackageReference",
+                        new XAttribute("Include", packageName));
                     
-                    // Log PropertyGroup elements
-                    var propertyGroups = root.Elements("PropertyGroup").ToList();
-                    Logger.LogInfo($"PropertyGroup elements count: {propertyGroups.Count}");
-                    foreach (var pg in propertyGroups)
+                    if (version != null)
                     {
-                        var targetFramework = pg.Element("TargetFramework")?.Value;
-                        if (targetFramework != null)
-                        {
-                            Logger.LogInfo($"  TargetFramework: {targetFramework}");
-                        }
+                        packageReference.Add(new XAttribute("Version", version));
                     }
-                    
-                    // Log ItemGroup elements
-                    var itemGroups = root.Elements("ItemGroup").ToList();
-                    Logger.LogInfo($"ItemGroup elements count: {itemGroups.Count}");
-                    
-                    // Log PackageReference elements
-                    var packageRefs = root.Descendants("PackageReference").ToList();
-                    Logger.LogInfo($"PackageReference elements count: {packageRefs.Count}");
-                    if (packageRefs.Count > 0)
-                    {
-                        Logger.LogInfo("Existing package references:");
-                        foreach (var pkgRef in packageRefs)
-                        {
-                            var include = pkgRef.Attribute("Include")?.Value;
-                            var version = pkgRef.Attribute("Version")?.Value;
-                            Logger.LogInfo($"  - {include} (version: {version ?? "not specified"})");
-                        }
-                    }
-                    
-                    // Log ProjectReference elements
-                    var projectRefs = root.Descendants("ProjectReference").ToList();
-                    Logger.LogInfo($"ProjectReference elements count: {projectRefs.Count}");
-                    
-                    // Log Reference elements
-                    var refs = root.Descendants("Reference").ToList();
-                    Logger.LogInfo($"Reference elements count: {refs.Count}");
+
+                    packageReferenceGroup.Add(packageReference);
+                    Logger.LogInfo($"Added new package reference: {packageName}" + (version != null ? $" version {version}" : ""));
                 }
-                
-                Logger.LogInfo("=== .csproj Validation Complete ===");
-            }
-            catch (XmlException xmlEx)
-            {
-                Logger.LogError($"XML parsing error: {xmlEx.Message}");
-                Logger.LogError($"Line: {xmlEx.LineNumber}, Position: {xmlEx.LinePosition}");
-                Logger.LogError($"Stack trace:{Environment.NewLine}{xmlEx.StackTrace}");
+
+                // Save the modified csproj file
+                SaveXmlWithUtf8Bom(doc, csprojPath);
             }
             catch (Exception ex)
             {
-                Logger.LogError($"Project file validation failed");
-                Logger.LogError($"Exception Type: {ex.GetType().Name}");
-                Logger.LogError($"Exception Message: {ex.Message}");
-                Logger.LogError($"Stack Trace:{Environment.NewLine}{ex.StackTrace}");
+                Logger.LogError($"Error adding PackageReference to {csprojPath}");
+                Logger.LogError($"Package: {packageName}, Version: {version ?? "(latest)"}");
+                Logger.LogError($"Exception: {ex.Message}");
+                throw;
             }
         }
 
-        // Adds the SecureCoding.Analyzers package to a project using dotnet add command.
+        // Adds the SecureCoding.Analyzers package to a project by directly modifying the csproj XML.
         private static void AddSecureCodingAnalyzersPackage(string csprojPath)
         {
             try
             {
-                Logger.LogInfo("=== Adding SecureCoding.Analyzers Package ===");
-                ValidateAndLogCsprojInfo(csprojPath);
-                Logger.LogInfo($"Target project: {csprojPath}");
-                Logger.LogInfo($"Package: Skyline.DataMiner.Utils.SecureCoding.Analyzers");
-                Logger.LogInfo($"NuGet source: https://api.nuget.org/v3/index.json");
-                
-                // Use dotnet add package to add the latest version (updates if already present)
-                string addPackageCommand = $"dotnet add \"{csprojPath}\" package Skyline.DataMiner.Utils.SecureCoding.Analyzers --source https://api.nuget.org/v3/index.json";
-                Logger.LogInfo($"Command to execute: {addPackageCommand}");
-                Logger.AddReproductionStep($"Add SecureCoding.Analyzers package: {addPackageCommand}");
-                
-                CommandExecutor.ExecuteCommand(addPackageCommand);
-                Logger.LogInfo("SecureCoding.Analyzers package added/updated successfully.");
+                Logger.LogInfo($"Adding SecureCoding.Analyzers package to {csprojPath}");
+                AddPackageReferenceToXml(csprojPath, "Skyline.DataMiner.Utils.SecureCoding.Analyzers");
+                Logger.LogInfo("SecureCoding.Analyzers package added successfully.");
             }
             catch (Exception ex)
             {
-                Logger.LogError($"=== Error adding SecureCoding.Analyzers package ===");
-                Logger.LogError($"Project: {csprojPath}");
-                Logger.LogError($"Exception Type: {ex.GetType().Name}");
-                Logger.LogError($"Exception Message: {ex.Message}");
-                Logger.LogError($"Stack Trace:{Environment.NewLine}{ex.StackTrace}");
+                Logger.LogError($"Error adding SecureCoding.Analyzers package to {csprojPath}: {ex.Message}");
                 throw;
             }
         }
 
-        // Adds the Skyline.DataMiner.Core.DataMinerSystem.Automation package to a project using dotnet add command.
+        // Adds the Skyline.DataMiner.Core.DataMinerSystem.Automation package to a project by directly modifying the csproj XML.
         private static void AddDataMinerSystemAutomationPackage(string csprojPath)
         {
             try
             {
-                Logger.LogInfo("=== Adding DataMinerSystem.Automation Package ===");
-                ValidateAndLogCsprojInfo(csprojPath);
-                Logger.LogInfo($"Target project: {csprojPath}");
-                Logger.LogInfo($"Package: Skyline.DataMiner.Core.DataMinerSystem.Automation");
-                Logger.LogInfo($"NuGet source: https://api.nuget.org/v3/index.json");
-                
-                // Use dotnet add package to add the latest version (updates if already present)
-                string addPackageCommand = $"dotnet add \"{csprojPath}\" package Skyline.DataMiner.Core.DataMinerSystem.Automation --source https://api.nuget.org/v3/index.json";
-                Logger.LogInfo($"Command to execute: {addPackageCommand}");
-                Logger.AddReproductionStep($"Add DataMinerSystem.Automation package: {addPackageCommand}");
-                
-                CommandExecutor.ExecuteCommand(addPackageCommand);
-                Logger.LogInfo("Replaced AutomationScript_ClassLibrary reference with NuGet package Skyline.DataMiner.Core.DataMinerSystem.Automation");
+                Logger.LogInfo($"Adding DataMinerSystem.Automation package to {csprojPath}");
+                AddPackageReferenceToXml(csprojPath, "Skyline.DataMiner.Core.DataMinerSystem.Automation");
+                Logger.LogInfo("DataMinerSystem.Automation package added successfully.");
             }
             catch (Exception ex)
             {
-                Logger.LogError($"=== Error adding DataMinerSystem.Automation package ===");
-                Logger.LogError($"Project: {csprojPath}");
-                Logger.LogError($"Exception Type: {ex.GetType().Name}");
-                Logger.LogError($"Exception Message: {ex.Message}");
-                Logger.LogError($"Stack Trace:{Environment.NewLine}{ex.StackTrace}");
+                Logger.LogError($"Error adding DataMinerSystem.Automation package to {csprojPath}: {ex.Message}");
                 throw;
             }
         }
 
-        // Adds the Skyline.DataMiner.Dev.Automation package to a project using dotnet add command.
+        // Adds the Skyline.DataMiner.Dev.Automation package to a project by directly modifying the csproj XML.
         private static void AddDevAutomationPackage(string csprojPath)
         {
             try
             {
-                Logger.LogInfo("=== Adding Dev.Automation Package ===");
-                ValidateAndLogCsprojInfo(csprojPath);
-                Logger.LogInfo($"Target project: {csprojPath}");
-                Logger.LogInfo($"Package: {AutomationPackageName}");
-                Logger.LogInfo($"Version: {AutomationPackageVersion}");
-                Logger.LogInfo($"NuGet source: https://api.nuget.org/v3/index.json");
-                
-                // Use dotnet add package with exact version (as defined in AutomationPackageVersion constant)
-                string addPackageCommand = $"dotnet add \"{csprojPath}\" package {AutomationPackageName} --version \"{AutomationPackageVersion}\" --source https://api.nuget.org/v3/index.json";
-                Logger.LogInfo($"Command to execute: {addPackageCommand}");
-                Logger.AddReproductionStep($"Add Dev.Automation package: {addPackageCommand}");
-                
-                CommandExecutor.ExecuteCommand(addPackageCommand);
-                Logger.LogInfo($"Added NuGet package '{AutomationPackageName}' with version {AutomationPackageVersion}.");
+                Logger.LogInfo($"Adding Dev.Automation package to {csprojPath}");
+                AddPackageReferenceToXml(csprojPath, AutomationPackageName, AutomationPackageVersion);
+                Logger.LogInfo($"Dev.Automation package version {AutomationPackageVersion} added successfully.");
             }
             catch (Exception ex)
             {
-                Logger.LogError($"=== Error adding {AutomationPackageName} package ===");
-                Logger.LogError($"Project: {csprojPath}");
-                Logger.LogError($"Version: {AutomationPackageVersion}");
-                Logger.LogError($"Exception Type: {ex.GetType().Name}");
-                Logger.LogError($"Exception Message: {ex.Message}");
-                Logger.LogError($"Stack Trace:{Environment.NewLine}{ex.StackTrace}");
+                Logger.LogError($"Error adding {AutomationPackageName} package to {csprojPath}: {ex.Message}");
                 throw;
             }
         }
 
-        // Adds the Newtonsoft.Json package to a project using dotnet add command.
+        // Adds the Newtonsoft.Json package to a project by directly modifying the csproj XML.
         private static void AddNewtonsoftJsonPackage(string csprojPath)
         {
             try
             {
-                Logger.LogInfo("=== Adding Newtonsoft.Json Package ===");
-                ValidateAndLogCsprojInfo(csprojPath);
-                Logger.LogInfo($"Target project: {csprojPath}");
-                Logger.LogInfo($"Package: {NewtonsoftJsonPackageName}");
-                Logger.LogInfo($"NuGet source: https://api.nuget.org/v3/index.json");
-                
-                // Use dotnet add package to add the latest version (updates if already present)
-                string addPackageCommand = $"dotnet add \"{csprojPath}\" package {NewtonsoftJsonPackageName} --source https://api.nuget.org/v3/index.json";
-                Logger.LogInfo($"Command to execute: {addPackageCommand}");
-                Logger.AddReproductionStep($"Add Newtonsoft.Json package: {addPackageCommand}");
-                
-                CommandExecutor.ExecuteCommand(addPackageCommand);
-                Logger.LogInfo($"Added latest stable NuGet package '{NewtonsoftJsonPackageName}' as a replacement for Newtonsoft.Json DLL reference.");
+                Logger.LogInfo($"Adding Newtonsoft.Json package to {csprojPath}");
+                AddPackageReferenceToXml(csprojPath, NewtonsoftJsonPackageName);
+                Logger.LogInfo("Newtonsoft.Json package added successfully.");
             }
             catch (Exception ex)
             {
-                Logger.LogError($"=== Error adding {NewtonsoftJsonPackageName} package ===");
-                Logger.LogError($"Project: {csprojPath}");
-                Logger.LogError($"Exception Type: {ex.GetType().Name}");
-                Logger.LogError($"Exception Message: {ex.Message}");
-                Logger.LogError($"Stack Trace:{Environment.NewLine}{ex.StackTrace}");
+                Logger.LogError($"Error adding {NewtonsoftJsonPackageName} package to {csprojPath}: {ex.Message}");
                 throw;
             }
         }
