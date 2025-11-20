@@ -772,6 +772,9 @@ namespace SLC_Package_Converter.Utilities
                     // Update version if specified
                     if (version != null)
                     {
+                        // Remove any child Version elements to avoid conflicts
+                        existingPackage.Elements("Version").Remove();
+                        
                         var versionAttr = existingPackage.Attribute("Version");
                         if (versionAttr != null)
                         {
