@@ -752,6 +752,11 @@ namespace SLC_Package_Converter.Utilities
                     return;
                 }
 
+                // Check if the package already exists in ANY ItemGroup
+                var existingPackage = root.Elements("ItemGroup")
+                    .SelectMany(ig => ig.Elements("PackageReference"))
+                    .FirstOrDefault(pr => pr.Attribute("Include")?.Value == packageName);
+                
                 // Find or create an ItemGroup for PackageReferences
                 XElement? packageReferenceGroup = root.Elements("ItemGroup")
                     .FirstOrDefault(ig => ig.Elements("PackageReference").Any());
@@ -761,10 +766,6 @@ namespace SLC_Package_Converter.Utilities
                     packageReferenceGroup = new XElement("ItemGroup");
                     root.Add(packageReferenceGroup);
                 }
-
-                // Check if the package already exists
-                var existingPackage = packageReferenceGroup.Elements("PackageReference")
-                    .FirstOrDefault(pr => pr.Attribute("Include")?.Value == packageName);
 
                 if (existingPackage != null)
                 {
