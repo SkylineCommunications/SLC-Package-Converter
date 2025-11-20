@@ -2,6 +2,8 @@
 using System.Text.RegularExpressions;
 using System.Xml;
 using System.Xml.Linq;
+using System.Net.Http;
+using System.Text.Json;
 
 namespace SLC_Package_Converter.Utilities
 {
@@ -12,6 +14,9 @@ namespace SLC_Package_Converter.Utilities
         private const string AutomationPackageName = "Skyline.DataMiner.Dev.Automation";
         private const string AutomationPackageVersion = "10.4.0.22";
         private const string NewtonsoftJsonPackageName = "Newtonsoft.Json";
+        
+        // Cache for fetched package versions (fetched once per package)
+        private static readonly Dictionary<string, string> PackageVersionCache = new Dictionary<string, string>();
 
         // Deprecated/Obsolete packages that are automatically replaced:
         // - SLC.Lib.Automation → Skyline.DataMiner.Core.DataMinerSystem.Automation
@@ -735,7 +740,58 @@ namespace SLC_Package_Converter.Utilities
             }
         }
 
+        // Fetches the latest version of a package from NuGet API (cached per package)
+        private static string? GetLatestPackageVersion(string packageName)
+        {
+            // Check cache first
+            if (PackageVersionCache.TryGetValue(packageName, out string? cachedVersion))
+            {
+                Logger.LogInfo($"Using cached version for {packageName}: {cachedVersion}");
+                return cachedVersion;
+            }
 
+            try
+            {
+                Logger.LogInfo($"Fetching latest version for {packageName} from NuGet API...");
+                using (var httpClient = new HttpClient())
+                {
+                    httpClient.Timeout = TimeSpan.FromSeconds(10);
+                    string url = $"https://api.nuget.org/v3-flatcontainer/{packageName.ToLowerInvariant()}/index.json";
+                    
+                    var response = httpClient.GetStringAsync(url).Result;
+                    var jsonDoc = JsonDocument.Parse(response);
+                    
+                    // Get the versions array and find the latest stable version
+                    if (jsonDoc.RootElement.TryGetProperty("versions", out JsonElement versionsElement))
+                    {
+                        var versions = versionsElement.EnumerateArray()
+                            .Select(v => v.GetString())
+                            .Where(v => v != null && !v.Contains("-")) // Filter out pre-release versions
+                            .ToList();
+                        
+                        if (versions.Any())
+                        {
+                            string? latestVersion = versions.Last(); // Versions are returned in order
+                            if (latestVersion != null)
+                            {
+                                Logger.LogInfo($"Latest version for {packageName}: {latestVersion}");
+                                PackageVersionCache[packageName] = latestVersion;
+                                return latestVersion;
+                            }
+                        }
+                    }
+                }
+                
+                Logger.LogWarning($"Could not determine latest version for {packageName}, will use without version");
+                return null;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning($"Failed to fetch latest version for {packageName}: {ex.Message}");
+                Logger.LogWarning("Package will be added without version specification");
+                return null;
+            }
+        }
 
         // Adds a PackageReference directly to the csproj XML file.
         private static void AddPackageReferenceToXml(string csprojPath, string packageName, string? version = null)
@@ -820,7 +876,8 @@ namespace SLC_Package_Converter.Utilities
             try
             {
                 Logger.LogInfo($"Adding SecureCoding.Analyzers package to {csprojPath}");
-                AddPackageReferenceToXml(csprojPath, "Skyline.DataMiner.Utils.SecureCoding.Analyzers");
+                string? version = GetLatestPackageVersion("Skyline.DataMiner.Utils.SecureCoding.Analyzers");
+                AddPackageReferenceToXml(csprojPath, "Skyline.DataMiner.Utils.SecureCoding.Analyzers", version);
                 Logger.LogInfo("SecureCoding.Analyzers package added successfully.");
             }
             catch (Exception ex)
@@ -836,7 +893,8 @@ namespace SLC_Package_Converter.Utilities
             try
             {
                 Logger.LogInfo($"Adding DataMinerSystem.Automation package to {csprojPath}");
-                AddPackageReferenceToXml(csprojPath, "Skyline.DataMiner.Core.DataMinerSystem.Automation");
+                string? version = GetLatestPackageVersion("Skyline.DataMiner.Core.DataMinerSystem.Automation");
+                AddPackageReferenceToXml(csprojPath, "Skyline.DataMiner.Core.DataMinerSystem.Automation", version);
                 Logger.LogInfo("DataMinerSystem.Automation package added successfully.");
             }
             catch (Exception ex)
@@ -868,7 +926,8 @@ namespace SLC_Package_Converter.Utilities
             try
             {
                 Logger.LogInfo($"Adding Newtonsoft.Json package to {csprojPath}");
-                AddPackageReferenceToXml(csprojPath, NewtonsoftJsonPackageName);
+                string? version = GetLatestPackageVersion(NewtonsoftJsonPackageName);
+                AddPackageReferenceToXml(csprojPath, NewtonsoftJsonPackageName, version);
                 Logger.LogInfo("Newtonsoft.Json package added successfully.");
             }
             catch (Exception ex)
