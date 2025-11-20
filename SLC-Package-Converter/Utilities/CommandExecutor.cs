@@ -26,14 +26,6 @@
         {
             try
             {
-                // Log the command being executed for debugging purposes
-                Logger.LogInfo("=== Executing Command ===");
-                Logger.LogInfo($"Command: {command}");
-                Logger.LogInfo($"Working directory: {Directory.GetCurrentDirectory()}");
-                Logger.LogInfo($"Return output: {returnOutput}");
-                Logger.LogInfo($"Shell: cmd.exe");
-                Logger.LogInfo($"Shell arguments: /c {command}");
-
                 var processStartInfo = new System.Diagnostics.ProcessStartInfo
                 {
                     FileName = "cmd.exe",
@@ -44,15 +36,6 @@
                     CreateNoWindow = true,
                     WorkingDirectory = Directory.GetCurrentDirectory()
                 };
-                
-                Logger.LogInfo($"Process start info configured:");
-                Logger.LogInfo($"  FileName: {processStartInfo.FileName}");
-                Logger.LogInfo($"  Arguments: {processStartInfo.Arguments}");
-                Logger.LogInfo($"  WorkingDirectory: {processStartInfo.WorkingDirectory}");
-                Logger.LogInfo($"  UseShellExecute: {processStartInfo.UseShellExecute}");
-                Logger.LogInfo($"  CreateNoWindow: {processStartInfo.CreateNoWindow}");
-                Logger.LogInfo($"  RedirectStandardOutput: {processStartInfo.RedirectStandardOutput}");
-                Logger.LogInfo($"  RedirectStandardError: {processStartInfo.RedirectStandardError}");
 
                 using (var process = System.Diagnostics.Process.Start(processStartInfo))
                 {
@@ -61,8 +44,6 @@
                         Logger.LogError($"Failed to start process for command '{command}'");
                         return null;
                     }
-                    
-                    Logger.LogInfo($"Process started successfully (PID: {process.Id})");
 
                     using (var reader = process.StandardOutput)
                     {
@@ -75,37 +56,14 @@
                             process.WaitForExit();
                             int exitCode = process.ExitCode;
                             
-                            // Log execution results
-                            Logger.LogInfo($"=== Command Execution Results ===");
-                            Logger.LogInfo($"Exit code: {exitCode}");
-                            Logger.LogInfo($"Standard output length: {output?.Length ?? 0} characters");
-                            Logger.LogInfo($"Standard error length: {error?.Length ?? 0} characters");
-                            
-                            // Log exit code for debugging
-                            if (exitCode != 0)
-                            {
-                                Logger.LogError($"Command exited with non-zero code: {exitCode}");
-                            }
-                            else
-                            {
-                                Logger.LogInfo("Command completed successfully (exit code 0)");
-                            }
-                            
-                            // Log both stdout and stderr if there was an error (non-zero exit code or stderr output)
+                            // Log only errors
                             if (!string.IsNullOrEmpty(error) || exitCode != 0)
                             {
-                                if (!string.IsNullOrEmpty(output))
-                                {
-                                    Logger.LogInfo($"Command output (stdout):{Environment.NewLine}{output}");
-                                }
+                                Logger.LogError($"Command failed (exit code {exitCode}): {command}");
                                 if (!string.IsNullOrEmpty(error))
                                 {
-                                    Logger.LogError($"Command error output (stderr):{Environment.NewLine}{error}");
+                                    Logger.LogError($"Error output: {error}");
                                 }
-                            }
-                            else if (!string.IsNullOrEmpty(output) && returnOutput)
-                            {
-                                Logger.LogInfo($"Command output:{Environment.NewLine}{output}");
                             }
                         }
                         
@@ -115,10 +73,6 @@
                         }
                         else
                         {
-                            if (!string.IsNullOrEmpty(output))
-                            {
-                                // Logger.LogInfo(output);
-                            }
                             return null;
                         }
                     }
@@ -126,11 +80,7 @@
             }
             catch (Exception ex)
             {
-                Logger.LogError($"=== Exception during command execution ===");
-                Logger.LogError($"Command: {command}");
-                Logger.LogError($"Exception Type: {ex.GetType().Name}");
-                Logger.LogError($"Exception Message: {ex.Message}");
-                Logger.LogError($"Stack Trace:{Environment.NewLine}{ex.StackTrace}");
+                Logger.LogError($"Exception executing command '{command}': {ex.Message}");
                 if (returnOutput)
                 {
                     return null;
