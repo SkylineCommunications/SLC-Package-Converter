@@ -5,6 +5,16 @@ using System.Xml.Linq;
 
 namespace SLC_Package_Converter.Utilities
 {
+    // Class to hold NuGet package requirements for a project
+    public class ProjectPackageRequirements
+    {
+        public string CsprojPath { get; set; } = string.Empty;
+        public bool NeedsNewtonsoftJson { get; set; }
+        public bool NeedsDevAutomation { get; set; }
+        public bool NeedsDataMinerSystemAutomation { get; set; }
+        public bool NeedsSecureCodingAnalyzers { get; set; }
+    }
+
     public static class XmlProcessor
     {
         // Constants for DataMiner Files references
@@ -30,6 +40,7 @@ namespace SLC_Package_Converter.Utilities
         public static HashSet<string> ProcessXmlFiles(string sourceDir, string destDir, string? slnFile)
         {
             var processedFiles = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var packageRequirements = new List<ProjectPackageRequirements>(); // Collect package requirements
             int successfulFileCount = 0; // Track number of successfully processed files
             try
             {
@@ -329,14 +340,29 @@ namespace SLC_Package_Converter.Utilities
                                 SaveXmlWithUtf8Bom(xmlDoc, Path.Combine(projectDirectory, $"{newName}.xml"));
                             }
 
-                            // Merge the .csproj files only if the source file exists
+                            // Merge the .csproj files only if the source file exists and collect package requirements
+                            string destCsprojPath = Path.Combine(projectDirectory, $"{newName}.csproj");
                             if (File.Exists(originalCsprojPath))
                             {
-                                MergeCsprojFiles(originalCsprojPath, Path.Combine(projectDirectory, $"{newName}.csproj"));
+                                var mergeRequirements = MergeCsprojFiles(originalCsprojPath, destCsprojPath);
+                                packageRequirements.Add(mergeRequirements);
                             }
                             
-                            // Add DLL references from XML Param elements to the .csproj
-                            AddDllReferencesToCsproj(scriptExe.DllReferences, Path.Combine(projectDirectory, $"{newName}.csproj"));
+                            // Add DLL references from XML Param elements to the .csproj and collect package requirements
+                            var dllRequirements = AddDllReferencesToCsproj(scriptExe.DllReferences, destCsprojPath);
+                            
+                            // Merge DLL requirements with existing requirements for this project
+                            var existingReq = packageRequirements.FirstOrDefault(r => r.CsprojPath == destCsprojPath);
+                            if (existingReq != null)
+                            {
+                                existingReq.NeedsNewtonsoftJson = existingReq.NeedsNewtonsoftJson || dllRequirements.NeedsNewtonsoftJson;
+                                existingReq.NeedsDevAutomation = existingReq.NeedsDevAutomation || dllRequirements.NeedsDevAutomation;
+                                existingReq.NeedsDataMinerSystemAutomation = existingReq.NeedsDataMinerSystemAutomation || dllRequirements.NeedsDataMinerSystemAutomation;
+                            }
+                            else
+                            {
+                                packageRequirements.Add(dllRequirements);
+                            }
                         }
                         if (fileProcessed)
                         {
@@ -358,6 +384,32 @@ namespace SLC_Package_Converter.Utilities
                     Logger.LogError("No XML files were successfully converted. All files were skipped due to errors or invalid format.");
                     throw new InvalidOperationException("No XML files were successfully converted.");
                 }
+                
+                // Now that all projects are created and converted to SDK-style, add the NuGet packages
+                Logger.LogInfo("Adding NuGet packages to converted projects...");
+                foreach (var requirements in packageRequirements)
+                {
+                    if (requirements.NeedsNewtonsoftJson)
+                    {
+                        AddNewtonsoftJsonPackage(requirements.CsprojPath);
+                    }
+                    
+                    if (requirements.NeedsDevAutomation)
+                    {
+                        AddDevAutomationPackage(requirements.CsprojPath);
+                    }
+                    
+                    if (requirements.NeedsDataMinerSystemAutomation)
+                    {
+                        AddDataMinerSystemAutomationPackage(requirements.CsprojPath);
+                    }
+                    
+                    if (requirements.NeedsSecureCodingAnalyzers)
+                    {
+                        AddSecureCodingAnalyzersPackage(requirements.CsprojPath);
+                    }
+                }
+                
                 return processedFiles;
             }
             catch (Exception ex)
@@ -417,8 +469,8 @@ namespace SLC_Package_Converter.Utilities
             }
         }
 
-        // Merges the contents of two .csproj files.
-        public static void MergeCsprojFiles(string sourceCsprojPath, string destinationCsprojPath)
+        // Merges the contents of two .csproj files and returns package requirements.
+        public static ProjectPackageRequirements MergeCsprojFiles(string sourceCsprojPath, string destinationCsprojPath)
         {
             try
             {
@@ -668,39 +720,17 @@ namespace SLC_Package_Converter.Utilities
                 xmlContent = Regex.Replace(xmlContent, @"\sxmlns=""[^""]+""", ""); // Remove xmlns attribute
                 File.WriteAllText(destinationCsprojPath, xmlContent);
 
-                // If Newtonsoft.Json reference was excluded, add the NuGet package using dotnet add
-                if (hasNewtonsoftJsonReference)
+                // Return package requirements instead of adding packages immediately
+                var requirements = new ProjectPackageRequirements
                 {
-                    AddNewtonsoftJsonPackage(destinationCsprojPath);
-                }
+                    CsprojPath = destinationCsprojPath,
+                    NeedsNewtonsoftJson = hasNewtonsoftJsonReference,
+                    NeedsDevAutomation = hasDataMinerFilesReferences || hasSlcLibAutomationReference,
+                    NeedsDataMinerSystemAutomation = hasSlcLibAutomationReference || hasSlcLibCommonReference || hasAutomationScriptClassLibraryReference,
+                    NeedsSecureCodingAnalyzers = true // Always add this package
+                };
 
-                // If DataMiner Files references were found, add the Dev.Automation NuGet package using dotnet add
-                if (hasDataMinerFilesReferences)
-                {
-                    AddDevAutomationPackage(destinationCsprojPath);
-                }
-
-                // If SLC.Lib.Automation was referenced, add the NuGet package instead using dotnet add
-                if (hasSlcLibAutomationReference)
-                {
-                    AddDataMinerSystemAutomationPackage(destinationCsprojPath);
-                    AddDevAutomationPackage(destinationCsprojPath);
-                }
-
-                // If SLC.Lib.Common was referenced, add the NuGet package instead using dotnet add
-                if (hasSlcLibCommonReference)
-                {
-                    AddDataMinerSystemAutomationPackage(destinationCsprojPath);
-                }
-
-                // If AutomationScript_ClassLibrary was referenced, add the NuGet package instead using dotnet add
-                if (hasAutomationScriptClassLibraryReference)
-                {
-                    AddDataMinerSystemAutomationPackage(destinationCsprojPath);
-                }
-
-                // Add Skyline.DataMiner.Utils.SecureCoding.Analyzers package using dotnet command to get latest version
-                AddSecureCodingAnalyzersPackage(destinationCsprojPath);
+                return requirements;
             }
             catch (Exception ex)
             {
@@ -785,12 +815,12 @@ namespace SLC_Package_Converter.Utilities
             }
         }
 
-        // Adds DLL references from XML Param elements to the .csproj file.
-        private static void AddDllReferencesToCsproj(List<string> dllReferences, string csprojPath)
+        // Adds DLL references from XML Param elements to the .csproj file and returns package requirements.
+        private static ProjectPackageRequirements AddDllReferencesToCsproj(List<string> dllReferences, string csprojPath)
         {
             if (dllReferences == null || dllReferences.Count == 0)
             {
-                return;
+                return new ProjectPackageRequirements { CsprojPath = csprojPath };
             }
 
             try
@@ -897,17 +927,13 @@ namespace SLC_Package_Converter.Utilities
                 xmlContent = Regex.Replace(xmlContent, @"\sxmlns=""[^""]+""", ""); // Remove xmlns attribute
                 File.WriteAllText(csprojPath, xmlContent);
 
-                // Add NuGet packages if needed
-                if (hasNewtonsoftJsonReference)
+                // Return package requirements instead of adding packages immediately
+                return new ProjectPackageRequirements
                 {
-                    AddNewtonsoftJsonPackage(csprojPath);
-                }
-
-                // If DataMiner Files references were found, add the Dev.Automation NuGet package using dotnet add
-                if (hasDataMinerFilesReferences)
-                {
-                    AddDevAutomationPackage(csprojPath);
-                }
+                    CsprojPath = csprojPath,
+                    NeedsNewtonsoftJson = hasNewtonsoftJsonReference,
+                    NeedsDevAutomation = hasDataMinerFilesReferences
+                };
             }
             catch (Exception ex)
             {
