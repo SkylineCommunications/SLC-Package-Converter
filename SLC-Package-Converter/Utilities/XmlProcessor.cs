@@ -32,7 +32,7 @@ namespace SLC_Package_Converter.Utilities
         // - If DLL doesn't exist in Dlls folder, a warning is logged for user to add it manually
 
         // Processes XML files in the source directory.
-        public static HashSet<string> ProcessXmlFiles(string sourceDir, string destDir, string? slnFile)
+        public static HashSet<string> ProcessXmlFiles(string sourceDir, string destDir, string? slnFile, string? sourceSlnFile)
         {
             var processedFiles = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             int successfulFileCount = 0; // Track number of successfully processed files
@@ -65,6 +65,14 @@ namespace SLC_Package_Converter.Utilities
                         if (string.IsNullOrEmpty(scriptName))
                         {
                             Logger.LogWarning($"No script name found in {file}. Skipping the file.");
+                            continue;
+                        }
+
+                        // Check if this XML file exists in the source solution file(s)
+                        string xmlFileName = Path.GetFileName(file);
+                        if (!SolutionHelper.IsProjectInSolution(sourceDir, xmlFileName))
+                        {
+                            Logger.LogWarning($"⚠️  EXCLUDED: XML file '{xmlFileName}' not found in any solution file. This is likely a leftover file that was removed from the solution. Skipping this file.");
                             continue;
                         }
 

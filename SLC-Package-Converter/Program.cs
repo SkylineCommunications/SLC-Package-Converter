@@ -127,7 +127,7 @@ class Program
 
             // Process XML files in the source directory and copy other directories
             Logger.LogInfo("Processing XML files...");
-            var processedFiles = XmlProcessor.ProcessXmlFiles(SourceDirectory, DestinationDirectory, destSlnFile);
+            var processedFiles = XmlProcessor.ProcessXmlFiles(SourceDirectory, DestinationDirectory, destSlnFile, sourceSlnFile);
             
             Logger.LogInfo("Copying other directories...");
             DirectoryHelper.CopyOtherDirectories(SourceDirectory, DestinationDirectory, ExcludedDirs, ExcludedSubDirs, ExcludedFiles, processedFiles);

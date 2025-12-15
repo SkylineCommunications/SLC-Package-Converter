@@ -236,6 +236,43 @@ namespace SLC_Package_Converter.Utilities
             }
         }
 
+        public static bool IsProjectInSolution(string sourceDir, string fileName)
+        {
+            try
+            {
+                // Get all .sln files in the source directory and subdirectories
+                string[] slnFiles = Directory.GetFiles(sourceDir, "*.sln", SearchOption.AllDirectories);
+                
+                if (slnFiles.Length == 0)
+                {
+                    // If no solution file exists, we can't verify - assume the project should be processed
+                    Logger.LogWarning($"No solution file found in source directory or subdirectories. Cannot verify if '{fileName}' should be processed. Proceeding with processing.");
+                    return true;
+                }
+
+                // Search in all solution files
+                foreach (string slnFile in slnFiles)
+                {
+                    var slnContent = File.ReadAllText(slnFile);
+                    
+                    // Check if the filename exists in any solution file
+                    if (slnContent.Contains(fileName, StringComparison.OrdinalIgnoreCase))
+                    {
+                        Logger.LogInfo($"File '{fileName}' found in solution file: {Path.GetFileName(slnFile)}");
+                        return true;
+                    }
+                }
+                
+                // File not found in any solution file
+                return false;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning($"Error checking if file '{fileName}' exists in solution files: {ex.Message}");
+                // If we can't check, assume it should be processed
+                return true;
+            }
+        }
 
     }
 }
