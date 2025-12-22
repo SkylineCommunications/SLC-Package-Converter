@@ -68,6 +68,14 @@ namespace SLC_Package_Converter.Utilities
                             continue;
                         }
 
+                        // Check if this XML file exists in the source solution file(s)
+                        string xmlFileName = Path.GetFileName(file);
+                        if (!SolutionHelper.IsProjectInSolution(sourceDir, xmlFileName))
+                        {
+                            Logger.LogWarning($"⚠️  EXCLUDED: XML file '{xmlFileName}' not found in any solution file. This is likely a leftover file that was removed from the solution. Skipping this file.");
+                            continue;
+                        }
+
                         // Track processed project names to detect conflicts
                         var processedProjectNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
