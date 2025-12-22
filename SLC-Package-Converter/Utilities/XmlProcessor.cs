@@ -32,7 +32,7 @@ namespace SLC_Package_Converter.Utilities
         // - If DLL doesn't exist in Dlls folder, a warning is logged for user to add it manually
 
         // Processes XML files in the source directory.
-        public static HashSet<string> ProcessXmlFiles(string sourceDir, string destDir, string? slnFile, string? sourceSlnFile)
+        public static HashSet<string> ProcessXmlFiles(string sourceDir, string destDir, string? slnFile)
         {
             var processedFiles = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             int successfulFileCount = 0; // Track number of successfully processed files
