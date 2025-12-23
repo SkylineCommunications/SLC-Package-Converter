@@ -999,7 +999,7 @@ namespace SLC_Package_Converter.Utilities
                     }
 
                     // Apply the same rules as HintPath processing in .csproj merge
-                    // Check if the DLL is in DataMiner Files or ProtocolScripts directory
+                    // Check if the DLL is in DataMiner Files or ProtocolScripts directory (can be absolute or relative path)
                     if (dllPath.Contains(@"Skyline DataMiner\Files\", StringComparison.OrdinalIgnoreCase) ||
                         dllPath.Contains("Skyline DataMiner/Files/", StringComparison.OrdinalIgnoreCase) ||
                         dllPath.Contains(@"Skyline DataMiner\ProtocolScripts\", StringComparison.OrdinalIgnoreCase) ||
