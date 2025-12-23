@@ -628,10 +628,8 @@ namespace SLC_Package_Converter.Utilities
                         continue;
                     }
                     
-                    // Check if the reference has a HintPath pointing to any Skyline DataMiner directory (can be absolute or relative path)
-                    if (!string.IsNullOrEmpty(hintPath) && 
-                        (hintPath.Contains(@"Skyline DataMiner\", StringComparison.OrdinalIgnoreCase) ||
-                         hintPath.Contains("Skyline DataMiner/", StringComparison.OrdinalIgnoreCase)))
+                    // Check if the reference has an absolute HintPath (e.g., C:\...)
+                    if (!string.IsNullOrEmpty(hintPath) && Path.IsPathRooted(hintPath))
                     {
                         string referenceName = includeAttribute?.Value ?? "Unknown";
                         
@@ -647,7 +645,7 @@ namespace SLC_Package_Converter.Utilities
                             continue;
                         }
                         
-                        // For other DataMiner DLLs (like SLSRMLibrary), update the HintPath to point to solution-level Dlls folder
+                        // For all absolute path DLLs, update the HintPath to point to solution-level Dlls folder
                         string dllFileName = Path.GetFileName(hintPath);
                         string newHintPath = $@"..\Dlls\{dllFileName}";
                         
@@ -661,15 +659,19 @@ namespace SLC_Package_Converter.Utilities
                         
                         if (dllExists)
                         {
-                            Logger.LogInfo($"Updated reference '{referenceName}' from DataMiner directory to: {newHintPath}");
+                            Logger.LogInfo($"Updated reference '{referenceName}' from absolute path to: {newHintPath}");
                         }
                         else
                         {
                             Logger.LogWarning($"Updated reference '{referenceName}' to: {newHintPath}. The DLL file was not found in the repository. Please add {dllFileName} to the Dlls folder manually.");
                         }
                         
-                        // Mark that we found DataMiner Files references to add the Dev.Automation NuGet package
-                        hasDataMinerFilesReferences = true;
+                        // Mark that we found DataMiner Files references to add the Dev.Automation NuGet package if it's a Skyline DataMiner path
+                        if (hintPath.Contains(@"Skyline DataMiner\", StringComparison.OrdinalIgnoreCase) ||
+                            hintPath.Contains("Skyline DataMiner/", StringComparison.OrdinalIgnoreCase))
+                        {
+                            hasDataMinerFilesReferences = true;
+                        }
                     }
 
                     var existingReference = referenceGroup.Elements("Reference")
@@ -997,9 +999,8 @@ namespace SLC_Package_Converter.Utilities
                     }
 
                     // Apply the same rules as HintPath processing in .csproj merge
-                    // Check if the DLL is in any Skyline DataMiner directory (can be absolute or relative path)
-                    if (dllPath.Contains(@"Skyline DataMiner\", StringComparison.OrdinalIgnoreCase) ||
-                        dllPath.Contains("Skyline DataMiner/", StringComparison.OrdinalIgnoreCase))
+                    // Check if the DLL path is absolute (e.g., C:\...)
+                    if (Path.IsPathRooted(dllPath))
                     {
                         // Check if this DLL is included in the Dev.Automation package (SLManagedAutomation, SLNetTypes, SLLoggerUtil, Skyline.DataMiner.Storage.Types)
                         if (dllPath.Contains("SLManagedAutomation", StringComparison.OrdinalIgnoreCase) ||
@@ -1013,7 +1014,7 @@ namespace SLC_Package_Converter.Utilities
                             continue;
                         }
                         
-                        // For other DataMiner DLLs (like SLSRMLibrary), update path to Dlls folder
+                        // For all absolute path DLLs, update path to Dlls folder
                         string fullDllFileName = $"{dllFileName}.dll";
                         string newHintPath = $@"..\Dlls\{fullDllFileName}";
                         
@@ -1021,7 +1022,7 @@ namespace SLC_Package_Converter.Utilities
                         
                         if (dllExists)
                         {
-                            Logger.LogInfo($"Adding DLL reference '{dllFileName}' from DataMiner directory to: {newHintPath}");
+                            Logger.LogInfo($"Adding DLL reference '{dllFileName}' from absolute path to: {newHintPath}");
                         }
                         else
                         {
@@ -1041,8 +1042,12 @@ namespace SLC_Package_Converter.Utilities
                             referenceGroup.Add(referenceElement);
                         }
                         
-                        // Mark that we found DataMiner Files references to add the Dev.Automation NuGet package
-                        hasDataMinerFilesReferences = true;
+                        // Mark that we found DataMiner Files references to add the Dev.Automation NuGet package if it's a Skyline DataMiner path
+                        if (dllPath.Contains(@"Skyline DataMiner\", StringComparison.OrdinalIgnoreCase) ||
+                            dllPath.Contains("Skyline DataMiner/", StringComparison.OrdinalIgnoreCase))
+                        {
+                            hasDataMinerFilesReferences = true;
+                        }
                         continue;
                     }
 
