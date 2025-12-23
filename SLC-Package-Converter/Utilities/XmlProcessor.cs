@@ -31,6 +31,17 @@ namespace SLC_Package_Converter.Utilities
         // - The Skyline.DataMiner.Dev.Automation package is added when DataMiner Files references are found
         // - If DLL doesn't exist in Dlls folder, a warning is logged for user to add it manually
 
+        /// <summary>
+        /// Checks if a given path is a Skyline DataMiner path.
+        /// </summary>
+        /// <param name="path">The path to check.</param>
+        /// <returns>True if the path contains "Skyline DataMiner", false otherwise.</returns>
+        private static bool IsDataMinerPath(string path)
+        {
+            return path.Contains(@"Skyline DataMiner\", StringComparison.OrdinalIgnoreCase) ||
+                   path.Contains("Skyline DataMiner/", StringComparison.OrdinalIgnoreCase);
+        }
+
         // Processes XML files in the source directory.
         public static HashSet<string> ProcessXmlFiles(string sourceDir, string destDir, string? slnFile)
         {
@@ -667,8 +678,7 @@ namespace SLC_Package_Converter.Utilities
                         }
                         
                         // Mark that we found DataMiner Files references to add the Dev.Automation NuGet package if it's a Skyline DataMiner path
-                        if (hintPath.Contains(@"Skyline DataMiner\", StringComparison.OrdinalIgnoreCase) ||
-                            hintPath.Contains("Skyline DataMiner/", StringComparison.OrdinalIgnoreCase))
+                        if (IsDataMinerPath(hintPath))
                         {
                             hasDataMinerFilesReferences = true;
                         }
@@ -1043,8 +1053,7 @@ namespace SLC_Package_Converter.Utilities
                         }
                         
                         // Mark that we found DataMiner Files references to add the Dev.Automation NuGet package if it's a Skyline DataMiner path
-                        if (dllPath.Contains(@"Skyline DataMiner\", StringComparison.OrdinalIgnoreCase) ||
-                            dllPath.Contains("Skyline DataMiner/", StringComparison.OrdinalIgnoreCase))
+                        if (IsDataMinerPath(dllPath))
                         {
                             hasDataMinerFilesReferences = true;
                         }
