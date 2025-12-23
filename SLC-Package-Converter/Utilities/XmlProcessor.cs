@@ -628,12 +628,10 @@ namespace SLC_Package_Converter.Utilities
                         continue;
                     }
                     
-                    // Check if the reference has a HintPath pointing to Skyline DataMiner\Files\ or Skyline DataMiner\ProtocolScripts\ (can be absolute or relative path)
+                    // Check if the reference has a HintPath pointing to any Skyline DataMiner directory (can be absolute or relative path)
                     if (!string.IsNullOrEmpty(hintPath) && 
-                        (hintPath.Contains(@"Skyline DataMiner\Files\", StringComparison.OrdinalIgnoreCase) ||
-                         hintPath.Contains("Skyline DataMiner/Files/", StringComparison.OrdinalIgnoreCase) ||
-                         hintPath.Contains(@"Skyline DataMiner\ProtocolScripts\", StringComparison.OrdinalIgnoreCase) ||
-                         hintPath.Contains("Skyline DataMiner/ProtocolScripts/", StringComparison.OrdinalIgnoreCase)))
+                        (hintPath.Contains(@"Skyline DataMiner\", StringComparison.OrdinalIgnoreCase) ||
+                         hintPath.Contains("Skyline DataMiner/", StringComparison.OrdinalIgnoreCase)))
                     {
                         string referenceName = includeAttribute?.Value ?? "Unknown";
                         
@@ -999,11 +997,9 @@ namespace SLC_Package_Converter.Utilities
                     }
 
                     // Apply the same rules as HintPath processing in .csproj merge
-                    // Check if the DLL is in DataMiner Files or ProtocolScripts directory (can be absolute or relative path)
-                    if (dllPath.Contains(@"Skyline DataMiner\Files\", StringComparison.OrdinalIgnoreCase) ||
-                        dllPath.Contains("Skyline DataMiner/Files/", StringComparison.OrdinalIgnoreCase) ||
-                        dllPath.Contains(@"Skyline DataMiner\ProtocolScripts\", StringComparison.OrdinalIgnoreCase) ||
-                        dllPath.Contains("Skyline DataMiner/ProtocolScripts/", StringComparison.OrdinalIgnoreCase))
+                    // Check if the DLL is in any Skyline DataMiner directory (can be absolute or relative path)
+                    if (dllPath.Contains(@"Skyline DataMiner\", StringComparison.OrdinalIgnoreCase) ||
+                        dllPath.Contains("Skyline DataMiner/", StringComparison.OrdinalIgnoreCase))
                     {
                         // Check if this DLL is included in the Dev.Automation package (SLManagedAutomation, SLNetTypes, SLLoggerUtil, Skyline.DataMiner.Storage.Types)
                         if (dllPath.Contains("SLManagedAutomation", StringComparison.OrdinalIgnoreCase) ||
