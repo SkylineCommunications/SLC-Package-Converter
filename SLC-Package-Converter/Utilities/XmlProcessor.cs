@@ -661,11 +661,11 @@ namespace SLC_Package_Converter.Utilities
                         
                         if (dllExists)
                         {
-                            Logger.LogInfo($"Updated {referenceName} → {newHintPath}");
+                            Logger.LogInfo($"Updated {referenceName} to {newHintPath}");
                         }
                         else
                         {
-                            Logger.LogWarning($"Updated {referenceName} → {newHintPath} (DLL not found, add {dllFileName} manually)");
+                            Logger.LogWarning($"Updated {referenceName} to {newHintPath} (DLL not found, add {dllFileName} manually)");
                         }
                         
                         // Mark that we found DataMiner Files references to add the Dev.Automation NuGet package if it's a Skyline DataMiner path
@@ -993,11 +993,11 @@ namespace SLC_Package_Converter.Utilities
                         
                         if (dllExists)
                         {
-                            Logger.LogInfo($"Adding {dllFileName} → {newHintPath}");
+                            Logger.LogInfo($"Adding {dllFileName} to {newHintPath}");
                         }
                         else
                         {
-                            Logger.LogWarning($"Adding {dllFileName} → {newHintPath} (DLL not found, add manually)");
+                            Logger.LogWarning($"Adding {dllFileName} to {newHintPath} (DLL not found, add manually)");
                         }
                         
                         // Check if reference already exists
