@@ -219,7 +219,8 @@ namespace SLC_Package_Converter.Utilities
                     
                     if (sourceInfo.Length != destInfo.Length)
                     {
-                        Logger.LogWarning($"Replacing {Path.Combine(Path.GetFileName(destDir), fileName)}: size differs");
+                        Logger.LogWarning(
+                            $"Replacing {Path.Combine(Path.GetFileName(destDir), fileName)}: size differs (source: {sourceInfo.Length} bytes, destination: {destInfo.Length} bytes)");
                     }
                 }
                 
