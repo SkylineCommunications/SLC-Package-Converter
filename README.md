@@ -76,7 +76,7 @@ Download the latest release of the tool from the [**Releases**](https://github.c
 Run the tool using the following command:
 
 ```bash
-SLC-Package-Converter.exe --sourceDir <SourceDirectory> [--destDir <DestinationDirectory>] [--solutionName <CustomName>] [--includeGitHubWorkflow <None|Basic|Complete>] [--branchName <BranchName>] [--preserveHistory]
+SLC-Package-Converter.exe --sourceDir <SourceDirectory> [--destDir <DestinationDirectory>] [--solutionName <CustomName>] [--includeGitHubWorkflow <None|Basic|Complete>] [--branchName <BranchName>] [--preserveHistory] [--debug]
 ```
 
 - `--sourceDir`: The folder where your current Automation Scripts are located (e.g., the repository folder).
@@ -93,6 +93,7 @@ SLC-Package-Converter.exe --sourceDir <SourceDirectory> [--destDir <DestinationD
   - `Complete`: Complete GitHub workflow (Skyline Quality Gate) - **default value**
 - `--branchName` (optional): Name of the Git branch to create when no destination directory is provided. **Default:** `converted-package`
 - `--preserveHistory` (optional): When specified, preserves git history by creating the new branch from the current branch instead of creating an orphan branch. **Default:** Creates orphan branch (no base)
+- `--debug` (optional): Enable verbose debug logging. Shows detailed information about all operations including element counts, file paths, version lookups, and detailed error traces. Useful for troubleshooting.
 
 ### 3. Examples
 
@@ -137,6 +138,12 @@ SLC-Package-Converter.exe --sourceDir "C:\Path\To\Source" --includeGitHubWorkflo
 #### Comprehensive example (multiple arguments)
 ```bash
 SLC-Package-Converter.exe --sourceDir "C:\Path\To\Source" --solutionName "MyPackage" --branchName "feature/package-migration" --includeGitHubWorkflow "Basic" --preserveHistory
+```
+
+#### Enable debug logging for troubleshooting
+```bash
+# Run with verbose debug output showing all details
+SLC-Package-Converter.exe --sourceDir "C:\Path\To\Source" --debug
 ```
 
 

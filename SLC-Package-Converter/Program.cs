@@ -12,6 +12,7 @@ class Program
         string IncludeGitHubWorkflow = "Complete"; // Default value
         string BranchName = "converted-package"; // Default value
         bool PreserveHistory = false; // Default value (false means use orphan branch)
+        bool DebugMode = false; // Default value
 
         for (int i = 0; i < args.Length; i++)
         {
@@ -54,13 +55,20 @@ class Program
             {
                 PreserveHistory = true;
             }
+            else if (args[i] == "--debug")
+            {
+                DebugMode = true;
+            }
         }
 
         if (string.IsNullOrEmpty(SourceDirectory))
         {
-            Console.WriteLine("Usage: SLC-Package-Converter.exe --sourceDir <SourceDirectory> [--destDir <DestinationDirectory>] [--solutionName <CustomName>] [--includeGitHubWorkflow <None|Basic|Complete>] [--branchName <BranchName>] [--preserveHistory]");
+            Console.WriteLine("Usage: SLC-Package-Converter.exe --sourceDir <SourceDirectory> [--destDir <DestinationDirectory>] [--solutionName <CustomName>] [--includeGitHubWorkflow <None|Basic|Complete>] [--branchName <BranchName>] [--preserveHistory] [--debug]");
             return;
         }
+
+        // Set debug mode in Logger
+        Logger.DebugMode = DebugMode;
 
         // Validate GitHub workflow type
         string[] validWorkflowTypes = { "None", "Basic", "Complete" };
@@ -78,8 +86,8 @@ class Program
 
         try
         {
-            Logger.LogInfo("Starting SLC-Package-Converter...");
-
+            Logger.LogDebug("Starting SLC-Package-Converter...");
+            
             // Validate the existence of the source directory
             if (!Directory.Exists(SourceDirectory))
             {
@@ -90,7 +98,7 @@ class Program
             // If DestinationDirectory is not provided, generate a temporary directory
             if (string.IsNullOrEmpty(DestinationDirectory))
             {
-                Logger.LogInfo("Creating new package project...");
+                Logger.LogDebug("Creating new package project...");
                 
                 var currentSln = SolutionHelper.GetSolutionFile(SourceDirectory);
                 string? currentSlnNameWithoutExtension = null;
@@ -126,19 +134,19 @@ class Program
             string? destSlnFile = SolutionHelper.GetSolutionFile(DestinationDirectory);
 
             // Process XML files in the source directory and copy other directories
-            Logger.LogInfo("Processing XML files...");
+            Logger.LogDebug("Processing XML files...");
             var processedFiles = XmlProcessor.ProcessXmlFiles(SourceDirectory, DestinationDirectory, destSlnFile);
             
-            Logger.LogInfo("Copying other directories...");
+            Logger.LogDebug("Copying other directories...");
             DirectoryHelper.CopyOtherDirectories(SourceDirectory, DestinationDirectory, ExcludedDirs, ExcludedSubDirs, ExcludedFiles, processedFiles);
             
-            Logger.LogInfo("Adding shared project references...");
+            Logger.LogDebug("Adding shared project references...");
             SolutionHelper.AddSharedProjectReferences(sourceSlnFile, destSlnFile);
 
             // If branch mode is enabled, create a branch and copy files
             if (branchMode)
             {
-                Logger.LogInfo("Creating branch and copying files...");
+                Logger.LogDebug("Creating branch and copying files...");
                 BranchManager.CreateBranchAndCopyFiles(SourceDirectory, DestinationDirectory, BranchName, PreserveHistory);
             }
             

@@ -7,22 +7,22 @@
         {
             try
             {
-                Logger.LogInfo("=== Creating Branch and Copying Files ===");
-                Logger.LogInfo($"Source directory: {sourceDir}");
-                Logger.LogInfo($"Destination directory: {destDir}");
-                Logger.LogInfo($"Branch name: {branchName}");
-                Logger.LogInfo($"Preserve history: {preserveHistory}");
-                Logger.LogInfo($"Current working directory (before change): {Directory.GetCurrentDirectory()}");
+                Logger.LogInfo($"Creating branch '{branchName}'");
+                Logger.LogDebug($"Source directory: {sourceDir}");
+                Logger.LogDebug($"Destination directory: {destDir}");
+                Logger.LogDebug($"Branch name: {branchName}");
+                Logger.LogDebug($"Preserve history: {preserveHistory}");
+                Logger.LogDebug($"Current working directory (before change): {Directory.GetCurrentDirectory()}");
                 
                 Directory.SetCurrentDirectory(sourceDir);
-                Logger.LogInfo($"Changed working directory to: {Directory.GetCurrentDirectory()}");
+                Logger.LogDebug($"Changed working directory to: {Directory.GetCurrentDirectory()}");
 
                 string? currentBranch = null;
                 
                 // Create branch based on preserveHistory parameter
                 if (!preserveHistory)
                 {
-                    Logger.LogInfo("Creating orphan branch (no history preservation)");
+                    Logger.LogDebug("Creating orphan branch (no history preservation)");
                     // Use orphan branch (original behavior)
                     CommandExecutor.ExecuteCommand($"git checkout --orphan {branchName}");
                     CommandExecutor.ExecuteCommand("git rm -rf .");
@@ -30,7 +30,7 @@
                 }
                 else
                 {
-                    Logger.LogInfo("Creating branch with history preservation");
+                    Logger.LogDebug("Creating branch with history preservation");
                     // Get current branch name first
                     currentBranch = GetCurrentBranch();
                     if (string.IsNullOrEmpty(currentBranch))
@@ -39,7 +39,7 @@
                         throw new InvalidOperationException("Could not determine current branch. Make sure you are in a git repository with a valid branch.");
                     }
                     
-                    Logger.LogInfo($"Current branch: {currentBranch}");
+                    Logger.LogDebug($"Current branch: {currentBranch}");
                     
                     // Create branch from current branch to preserve git history
                     CommandExecutor.ExecuteCommand($"git checkout -b {branchName} {currentBranch}");
@@ -47,7 +47,6 @@
                     CommandExecutor.ExecuteCommand("git clean -fd");
                 }
 
-                Logger.LogInfo("=== Copying directories and files ===");
                 int directoriesCopied = 0;
                 int filesCopied = 0;
                 
@@ -58,11 +57,11 @@
                     {
                         Directory.CreateDirectory(targetDirPath);
                         directoriesCopied++;
-                        Logger.LogInfo($"Created directory: {targetDirPath}");
+                        Logger.LogDebug($"Created directory: {targetDirPath}");
                     }
                 }
                 
-                Logger.LogInfo($"Total directories created: {directoriesCopied}");
+                Logger.LogDebug($"Total directories created: {directoriesCopied}");
 
                 foreach (string filePath in Directory.GetFiles(destDir, "*.*", SearchOption.AllDirectories))
                 {
@@ -71,30 +70,29 @@
                     filesCopied++;
                 }
                 
-                Logger.LogInfo($"Total files copied: {filesCopied}");
+                Logger.LogInfo($"Copied {filesCopied} files");
+                Logger.LogDebug($"Total files copied: {filesCopied}");
 
-                Logger.LogInfo("=== Committing changes ===");
                 CommandExecutor.ExecuteCommand("git add .");
                 
                 string commitMessage = !preserveHistory 
                     ? $"Converted package using SLC-Package-Converter into {branchName} branch"
                     : $"Converted package using SLC-Package-Converter into {branchName} branch (from {currentBranch})";
                     
-                Logger.LogInfo($"Commit message: {commitMessage}");
+                Logger.LogDebug($"Commit message: {commitMessage}");
                 CommandExecutor.ExecuteCommand($"git commit -m \"{commitMessage}\"");
 
                 string successMessage = !preserveHistory
-                    ? $"Successfully created orphan branch '{branchName}' and copied files."
-                    : $"Successfully created branch '{branchName}' from '{currentBranch}' and copied files.";
+                    ? $"Created orphan branch '{branchName}'"
+                    : $"Created branch '{branchName}' from '{currentBranch}'";
                     
                 Logger.LogInfo(successMessage);
             }
             catch (Exception ex)
             {
-                Logger.LogError($"=== Error creating branch and copying files ===");
-                Logger.LogError($"Exception Type: {ex.GetType().Name}");
-                Logger.LogError($"Exception Message: {ex.Message}");
-                Logger.LogError($"Stack Trace:{Environment.NewLine}{ex.StackTrace}");
+                Logger.LogError($"Error creating branch: {ex.Message}");
+                Logger.LogDebug($"Exception Type: {ex.GetType().Name}");
+                Logger.LogDebug($"Stack Trace:{Environment.NewLine}{ex.StackTrace}");
                 throw;
             }
         }
