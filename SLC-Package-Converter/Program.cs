@@ -132,8 +132,7 @@ class Program
             // Check if any files were processed
             if (processedFiles.Count == 0)
             {
-                Logger.LogWarning("No XML files were converted. The package converter completed without making any changes.");
-                Logger.LogInfo("Package conversion completed successfully (no changes made)!");
+                Logger.LogWarning("No XML files were converted. The package converter completed successfully without making any changes.");
                 return;
             }
             
