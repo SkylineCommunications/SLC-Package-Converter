@@ -16,7 +16,7 @@ namespace SLC_Package_Converter.Utilities
                 }
 
                 // If no solution file found in root, search one level down in subdirectories
-                Logger.LogInfo("No solution file found in root directory. Searching in subdirectories...");
+                Logger.LogDebug("No solution file found in root directory. Searching in subdirectories...");
                 string[] subdirectories = Directory.GetDirectories(directory);
                 
                 List<string> subdirectoriesWithSln = new List<string>();
@@ -27,7 +27,7 @@ namespace SLC_Package_Converter.Utilities
                     string[] subSlnFiles = Directory.GetFiles(subdirectory, "*.sln", SearchOption.TopDirectoryOnly);
                     if (subSlnFiles.Length > 0)
                     {
-                        Logger.LogInfo($"Solution file found in subdirectory: {subdirectory}");
+                        Logger.LogDebug($"Solution file found in subdirectory: {subdirectory}");
                         subdirectoriesWithSln.Add(subdirectory);
                     }
                 }
@@ -43,7 +43,7 @@ namespace SLC_Package_Converter.Utilities
                     // Clean up: delete the original subdirectories after copying
                     foreach (string subdirectory in subdirectoriesWithSln)
                     {
-                        Logger.LogInfo($"Cleaning up original subdirectory: {subdirectory}");
+                        Logger.LogDebug($"Cleaning up original subdirectory: {subdirectory}");
                         Directory.Delete(subdirectory, recursive: true);
                     }
                     
@@ -51,7 +51,7 @@ namespace SLC_Package_Converter.Utilities
                     string[] existingSlnFiles = Directory.GetFiles(directory, "*.sln", SearchOption.TopDirectoryOnly);
                     foreach (string slnFile in existingSlnFiles)
                     {
-                        Logger.LogInfo($"Deleting existing solution file: {slnFile}");
+                        Logger.LogDebug($"Deleting existing solution file: {slnFile}");
                         File.Delete(slnFile);
                     }
 
@@ -59,7 +59,7 @@ namespace SLC_Package_Converter.Utilities
                     string newSolutionFileName = Path.GetFileName(directory) + ".sln";
                     string newSolutionPath = Path.Combine(directory, newSolutionFileName);
                     
-                    Logger.LogInfo($"Creating new empty solution file: {newSolutionPath}");
+                    Logger.LogDebug($"Creating new empty solution file: {newSolutionPath}");
                     File.WriteAllText(newSolutionPath, string.Empty);
                     
                     return newSolutionPath;
@@ -80,7 +80,7 @@ namespace SLC_Package_Converter.Utilities
                 // If source solution file is null or empty, just log and return (no shared projects to copy)
                 if (string.IsNullOrWhiteSpace(sourceSlnFile))
                 {
-                    Logger.LogInfo("No source solution file provided. Skipping shared project references.");
+                    Logger.LogDebug("No source solution file provided. Skipping shared project references.");
                     return;
                 }
                 
@@ -97,7 +97,7 @@ namespace SLC_Package_Converter.Utilities
 
                 if (!sharedProjectLines.Any())
                 {
-                    Logger.LogInfo("No shared project references found in the source solution file.");
+                    Logger.LogDebug("No shared project references found in the source solution file.");
                     return;
                 }
 
@@ -123,8 +123,8 @@ namespace SLC_Package_Converter.Utilities
 
                 // Write updated lines back to the destination solution file
                 File.WriteAllLines(destSlnFile, destLines);
-
-                Logger.LogInfo("Shared project references successfully added to the destination solution file.");
+                
+                Logger.LogDebug("Shared project references successfully added to the destination solution file.");
             }
             catch (Exception ex)
             {
@@ -137,7 +137,7 @@ namespace SLC_Package_Converter.Utilities
         {
             try
             {
-                Logger.LogInfo($"Copying files from {subdirectoryPath} to {rootDirectory}");
+                Logger.LogDebug($"Copying files from {subdirectoryPath} to {rootDirectory}");
                 
                 // Get all files in the subdirectory
                 string[] files = Directory.GetFiles(subdirectoryPath, "*", SearchOption.TopDirectoryOnly);
@@ -156,16 +156,16 @@ namespace SLC_Package_Converter.Utilities
                         
                         if (sourceInfo.Length != destInfo.Length)
                         {
-                            Logger.LogWarning($"Replacing {fileName}: file size differs (original: {destInfo.Length} bytes, new: {sourceInfo.Length} bytes)");
+                            Logger.LogWarning($"Replacing {fileName}: size differs (was {destInfo.Length}, now {sourceInfo.Length} bytes)");
                         }
                         else
                         {
-                            Logger.LogInfo($"Replacing {fileName} (same file size: {sourceInfo.Length} bytes)");
+                            Logger.LogDebug($"Replacing {fileName} (same file size: {sourceInfo.Length} bytes)");
                         }
                     }
                     else
                     {
-                        Logger.LogInfo($"Copying {fileName} to root directory");
+                        Logger.LogDebug($"Copying {fileName} to root directory");
                     }
                     
                     // Copy the file, overwriting if it exists
@@ -182,13 +182,13 @@ namespace SLC_Package_Converter.Utilities
                     if (!Directory.Exists(destinationSubDir))
                     {
                         Directory.CreateDirectory(destinationSubDir);
-                        Logger.LogInfo($"Created directory {subDirName} in root");
+                        Logger.LogDebug($"Created directory {subDirName} in root");
                     }
                     
                     CopyDirectoryRecursively(subDir, destinationSubDir);
                 }
                 
-                Logger.LogInfo($"Successfully copied all files from {subdirectoryPath} to root directory");
+                Logger.LogDebug($"Successfully copied all files from {subdirectoryPath} to root directory");
             }
             catch (Exception ex)
             {
@@ -219,7 +219,8 @@ namespace SLC_Package_Converter.Utilities
                     
                     if (sourceInfo.Length != destInfo.Length)
                     {
-                        Logger.LogWarning($"Replacing {Path.Combine(Path.GetFileName(destDir), fileName)}: file size differs (original: {destInfo.Length} bytes, new: {sourceInfo.Length} bytes)");
+                        Logger.LogWarning(
+                            $"Replacing {Path.Combine(Path.GetFileName(destDir), fileName)}: size differs (source: {sourceInfo.Length} bytes, destination: {destInfo.Length} bytes)");
                     }
                 }
                 
@@ -258,7 +259,7 @@ namespace SLC_Package_Converter.Utilities
                     // Check if the filename exists in any solution file
                     if (slnContent.Contains(fileName, StringComparison.OrdinalIgnoreCase))
                     {
-                        Logger.LogInfo($"File '{fileName}' found in solution file: {Path.GetFileName(slnFile)}");
+                        Logger.LogDebug($"File '{fileName}' found in solution file: {Path.GetFileName(slnFile)}");
                         return true;
                     }
                 }
