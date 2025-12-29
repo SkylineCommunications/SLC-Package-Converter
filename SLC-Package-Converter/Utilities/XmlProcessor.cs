@@ -447,6 +447,8 @@ namespace SLC_Package_Converter.Utilities
             try
             {
                 Logger.LogInfo("Merging .csproj files");
+                Logger.LogDebug($"Source .csproj: {sourceCsprojPath}");
+                Logger.LogDebug($"Destination .csproj: {destinationCsprojPath}");
                 
                 // Validate files exist
                 if (!File.Exists(sourceCsprojPath))
@@ -466,6 +468,7 @@ namespace SLC_Package_Converter.Utilities
                 XDocument destinationDoc = XDocument.Load(destinationCsprojPath);
 
                 XNamespace ns = sourceDoc.Root!.GetDefaultNamespace(); // Capture the source namespace
+                Logger.LogDebug($"Source namespace: {ns}");
 
                 // Get elements from the source .csproj file
                 var sourceImports = sourceDoc.Descendants(ns + "Import")
@@ -473,6 +476,11 @@ namespace SLC_Package_Converter.Utilities
                 var sourcePackageReferences = sourceDoc.Descendants(ns + "PackageReference");
                 var sourceProjectReferences = sourceDoc.Descendants(ns + "ProjectReference");
                 var sourceReferences = sourceDoc.Descendants(ns + "Reference");
+                
+                Logger.LogDebug($"Source Import elements: {sourceImports.Count()}");
+                Logger.LogDebug($"Source PackageReference elements: {sourcePackageReferences.Count()}");
+                Logger.LogDebug($"Source ProjectReference elements: {sourceProjectReferences.Count()}");
+                Logger.LogDebug($"Source Reference elements: {sourceReferences.Count()}");
 
                 XElement destinationProject = destinationDoc.Element("Project")!;
 
@@ -480,6 +488,7 @@ namespace SLC_Package_Converter.Utilities
                 XElement? lastItemGroup = destinationProject.Elements("ItemGroup").LastOrDefault();
                 if (lastItemGroup != null)
                 {
+                    Logger.LogDebug("Removing last ItemGroup from destination");
                     lastItemGroup.Remove();
                 }
 
@@ -626,6 +635,7 @@ namespace SLC_Package_Converter.Utilities
                     {
                         string referenceName = includeAttribute?.Value ?? "Unknown";
                         Logger.LogInfo($"Excluding {referenceName} (replaced by NuGet)");
+                        Logger.LogDebug($"Excluding reference '{referenceName}' with HintPath '{hintPath}'. It will be replaced by the {NewtonsoftJsonPackageName} NuGet package.");
                         hasNewtonsoftJsonReference = true;
                         continue;
                     }
@@ -643,6 +653,7 @@ namespace SLC_Package_Converter.Utilities
                         {
                             // Skip this reference - it will be replaced by the Dev.Automation package
                             Logger.LogInfo($"Excluding {referenceName} (replaced by {AutomationPackageName})");
+                            Logger.LogDebug($"Excluding reference '{referenceName}' with HintPath '{hintPath}'. It will be replaced by the {AutomationPackageName} NuGet package.");
                             hasDataMinerFilesReferences = true;
                             continue;
                         }
@@ -662,10 +673,12 @@ namespace SLC_Package_Converter.Utilities
                         if (dllExists)
                         {
                             Logger.LogInfo($"Updated {referenceName} to {newHintPath}");
+                            Logger.LogDebug($"Updated reference '{referenceName}' from absolute path to: {newHintPath}");
                         }
                         else
                         {
                             Logger.LogWarning($"Updated {referenceName} to {newHintPath} (DLL not found, add {dllFileName} manually)");
+                            Logger.LogDebug($"Updated reference '{referenceName}' to: {newHintPath}. The DLL file was not found in the repository. Please add {dllFileName} to the Dlls folder manually.");
                         }
                         
                         // Mark that we found DataMiner Files references to add the Dev.Automation NuGet package if it's a Skyline DataMiner path
@@ -688,28 +701,33 @@ namespace SLC_Package_Converter.Utilities
                 }
 
                 // Save the merged .csproj file
+                Logger.LogDebug("Saving merged .csproj file");
                 destinationDoc.Save(destinationCsprojPath);
 
                 // Remove xmlns attribute from the saved .csproj file
                 string xmlContent = File.ReadAllText(destinationCsprojPath);
                 xmlContent = Regex.Replace(xmlContent, @"\sxmlns=""[^""]+""", ""); // Remove xmlns attribute
                 File.WriteAllText(destinationCsprojPath, xmlContent);
+                Logger.LogDebug("Removed xmlns attribute from .csproj file");
 
                 // If Newtonsoft.Json reference was excluded, add the NuGet package using dotnet add
                 if (hasNewtonsoftJsonReference)
                 {
+                    Logger.LogDebug("Newtonsoft.Json reference found - will add NuGet package");
                     AddNewtonsoftJsonPackage(destinationCsprojPath);
                 }
 
                 // If DataMiner Files references were found, add the Dev.Automation NuGet package using dotnet add
                 if (hasDataMinerFilesReferences)
                 {
+                    Logger.LogDebug("DataMiner Files references found - will add Dev.Automation NuGet package");
                     AddDevAutomationPackage(destinationCsprojPath);
                 }
 
                 // If SLC.Lib.Automation was referenced, add the NuGet package instead using dotnet add
                 if (hasSlcLibAutomationReference)
                 {
+                    Logger.LogDebug("SLC.Lib.Automation reference found - will add replacement NuGet packages");
                     AddDataMinerSystemAutomationPackage(destinationCsprojPath);
                     AddDevAutomationPackage(destinationCsprojPath);
                 }
@@ -717,21 +735,30 @@ namespace SLC_Package_Converter.Utilities
                 // If SLC.Lib.Common was referenced, add the NuGet package instead using dotnet add
                 if (hasSlcLibCommonReference)
                 {
+                    Logger.LogDebug("SLC.Lib.Common reference found - will add replacement NuGet package");
                     AddDataMinerSystemAutomationPackage(destinationCsprojPath);
                 }
 
                 // If AutomationScript_ClassLibrary was referenced, add the NuGet package instead using dotnet add
                 if (hasAutomationScriptClassLibraryReference)
                 {
+                    Logger.LogDebug("AutomationScript_ClassLibrary reference found - will add replacement NuGet package");
                     AddDataMinerSystemAutomationPackage(destinationCsprojPath);
                 }
 
                 // Add Skyline.DataMiner.Utils.SecureCoding.Analyzers package using dotnet command to get latest version
+                Logger.LogDebug("Adding SecureCoding.Analyzers package");
                 AddSecureCodingAnalyzersPackage(destinationCsprojPath);
+                Logger.LogDebug("Completed .csproj merging successfully");
             }
             catch (Exception ex)
             {
                 Logger.LogError($"Error merging .csproj files: {ex.Message}");
+                Logger.LogDebug($"Source: {sourceCsprojPath}");
+                Logger.LogDebug($"Destination: {destinationCsprojPath}");
+                Logger.LogDebug($"Exception Type: {ex.GetType().Name}");
+                Logger.LogDebug($"Exception Message: {ex.Message}");
+                Logger.LogDebug($"Stack Trace:{Environment.NewLine}{ex.StackTrace}");
                 throw;
             }
         }
@@ -742,11 +769,13 @@ namespace SLC_Package_Converter.Utilities
             // Check cache first
             if (PackageVersionCache.TryGetValue(packageName, out string? cachedVersion))
             {
+                Logger.LogDebug($"Using cached version for {packageName}: {cachedVersion}");
                 return cachedVersion;
             }
 
             try
             {
+                Logger.LogDebug($"Fetching latest version for {packageName} from NuGet API...");
                 using (var httpClient = new HttpClient())
                 {
                     httpClient.Timeout = TimeSpan.FromSeconds(10);
@@ -768,6 +797,7 @@ namespace SLC_Package_Converter.Utilities
                             string? latestVersion = versions.Last(); // Versions are returned in order
                             if (latestVersion != null)
                             {
+                                Logger.LogDebug($"Latest version for {packageName}: {latestVersion}");
                                 PackageVersionCache[packageName] = latestVersion;
                                 return latestVersion;
                             }
@@ -775,11 +805,13 @@ namespace SLC_Package_Converter.Utilities
                     }
                 }
                 
+                Logger.LogDebug($"Could not determine latest version for {packageName}, will use without version");
                 return null;
             }
             catch (Exception ex)
             {
                 Logger.LogWarning($"Failed to fetch version for {packageName}: {ex.Message}");
+                Logger.LogDebug("Package will be added without version specification");
                 return null;
             }
         }
@@ -845,6 +877,7 @@ namespace SLC_Package_Converter.Utilities
                     }
 
                     packageReferenceGroup.Add(packageReference);
+                    Logger.LogDebug($"Added new package reference: {packageName}" + (version != null ? $" version {version}" : ""));
                 }
 
                 // Save the modified csproj file
@@ -853,8 +886,8 @@ namespace SLC_Package_Converter.Utilities
             catch (Exception ex)
             {
                 Logger.LogError($"Error adding PackageReference to {csprojPath}");
-                Logger.LogError($"Package: {packageName}, Version: {version ?? "(latest)"}");
-                Logger.LogError($"Exception: {ex.Message}");
+                Logger.LogDebug($"Package: {packageName}, Version: {version ?? "(latest)"}");
+                Logger.LogDebug($"Exception: {ex.Message}");
                 throw;
             }
         }
@@ -864,12 +897,15 @@ namespace SLC_Package_Converter.Utilities
         {
             try
             {
+                Logger.LogDebug($"Adding SecureCoding.Analyzers package to {csprojPath}");
                 string? version = GetLatestPackageVersion("Skyline.DataMiner.Utils.SecureCoding.Analyzers");
                 AddPackageReferenceToXml(csprojPath, "Skyline.DataMiner.Utils.SecureCoding.Analyzers", version);
+                Logger.LogDebug("SecureCoding.Analyzers package added successfully.");
             }
             catch (Exception ex)
             {
                 Logger.LogError($"Error adding SecureCoding.Analyzers: {ex.Message}");
+                Logger.LogDebug($"Error adding SecureCoding.Analyzers package to {csprojPath}: {ex.Message}");
                 throw;
             }
         }
@@ -879,12 +915,15 @@ namespace SLC_Package_Converter.Utilities
         {
             try
             {
+                Logger.LogDebug($"Adding DataMinerSystem.Automation package to {csprojPath}");
                 string? version = GetLatestPackageVersion("Skyline.DataMiner.Core.DataMinerSystem.Automation");
                 AddPackageReferenceToXml(csprojPath, "Skyline.DataMiner.Core.DataMinerSystem.Automation", version);
+                Logger.LogDebug("DataMinerSystem.Automation package added successfully.");
             }
             catch (Exception ex)
             {
                 Logger.LogError($"Error adding DataMinerSystem.Automation: {ex.Message}");
+                Logger.LogDebug($"Error adding DataMinerSystem.Automation package to {csprojPath}: {ex.Message}");
                 throw;
             }
         }
@@ -894,11 +933,14 @@ namespace SLC_Package_Converter.Utilities
         {
             try
             {
+                Logger.LogDebug($"Adding Dev.Automation package to {csprojPath}");
                 AddPackageReferenceToXml(csprojPath, AutomationPackageName, AutomationPackageVersion);
+                Logger.LogDebug($"Dev.Automation package version {AutomationPackageVersion} added successfully.");
             }
             catch (Exception ex)
             {
                 Logger.LogError($"Error adding {AutomationPackageName}: {ex.Message}");
+                Logger.LogDebug($"Error adding {AutomationPackageName} package to {csprojPath}: {ex.Message}");
                 throw;
             }
         }
@@ -908,12 +950,15 @@ namespace SLC_Package_Converter.Utilities
         {
             try
             {
+                Logger.LogDebug($"Adding Newtonsoft.Json package to {csprojPath}");
                 string? version = GetLatestPackageVersion(NewtonsoftJsonPackageName);
                 AddPackageReferenceToXml(csprojPath, NewtonsoftJsonPackageName, version);
+                Logger.LogDebug("Newtonsoft.Json package added successfully.");
             }
             catch (Exception ex)
             {
                 Logger.LogError($"Error adding {NewtonsoftJsonPackageName}: {ex.Message}");
+                Logger.LogDebug($"Error adding {NewtonsoftJsonPackageName} package to {csprojPath}: {ex.Message}");
                 throw;
             }
         }
@@ -965,6 +1010,7 @@ namespace SLC_Package_Converter.Utilities
                     if (dllPath.Contains("Newtonsoft.Json", StringComparison.OrdinalIgnoreCase))
                     {
                         Logger.LogInfo($"Excluding {dllPath} (replaced by NuGet)");
+                        Logger.LogDebug($"Excluding DLL reference '{dllPath}'. It will be replaced by the {NewtonsoftJsonPackageName} NuGet package.");
                         hasNewtonsoftJsonReference = true;
                         continue;
                     }
@@ -981,6 +1027,7 @@ namespace SLC_Package_Converter.Utilities
                         {
                             // Skip this reference - it will be replaced by the Dev.Automation package
                             Logger.LogInfo($"Excluding {dllPath} (replaced by {AutomationPackageName})");
+                            Logger.LogDebug($"Excluding DLL reference '{dllPath}'. It will be replaced by the {AutomationPackageName} NuGet package.");
                             hasDataMinerFilesReferences = true;
                             continue;
                         }
@@ -994,10 +1041,12 @@ namespace SLC_Package_Converter.Utilities
                         if (dllExists)
                         {
                             Logger.LogInfo($"Adding {dllFileName} to {newHintPath}");
+                            Logger.LogDebug($"Adding DLL reference '{dllFileName}' from absolute path to: {newHintPath}");
                         }
                         else
                         {
                             Logger.LogWarning($"Adding {dllFileName} to {newHintPath} (DLL not found, add manually)");
+                            Logger.LogDebug($"Adding DLL reference '{dllFileName}' to: {newHintPath}. The DLL file was not found in the repository. Please add {fullDllFileName} to the Dlls folder manually.");
                         }
                         
                         // Check if reference already exists
@@ -1035,6 +1084,7 @@ namespace SLC_Package_Converter.Utilities
                         );
                         referenceGroup.Add(referenceElement);
                         Logger.LogInfo($"Adding {dllPath}");
+                        Logger.LogDebug($"Adding DLL reference: '{dllPath}'");
                     }
                 }
 
