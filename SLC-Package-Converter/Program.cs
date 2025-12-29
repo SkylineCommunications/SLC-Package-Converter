@@ -130,6 +130,8 @@ class Program
             var processedFiles = XmlProcessor.ProcessXmlFiles(SourceDirectory, DestinationDirectory, destSlnFile);
             
             // Check if any files were processed
+            // If no XML files were converted, there's no point in copying other files,
+            // adding references, or creating a branch since the tool's purpose is XML conversion
             if (processedFiles.Count == 0)
             {
                 Logger.LogWarning("No XML files were converted. The package converter completed successfully without making any changes.");
