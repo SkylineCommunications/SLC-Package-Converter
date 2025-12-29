@@ -885,9 +885,8 @@ namespace SLC_Package_Converter.Utilities
             }
             catch (Exception ex)
             {
-                Logger.LogError($"Error adding PackageReference to {csprojPath}");
-                Logger.LogDebug($"Package: {packageName}, Version: {version ?? "(latest)"}");
-                Logger.LogDebug($"Exception: {ex.Message}");
+                Logger.LogError($"Error adding PackageReference to {csprojPath}: {packageName}, Version: {version ?? "(latest)"}");
+                Logger.LogDebug($"Stack trace: {ex.StackTrace}");
                 throw;
             }
         }
@@ -904,8 +903,8 @@ namespace SLC_Package_Converter.Utilities
             }
             catch (Exception ex)
             {
-                Logger.LogError($"Error adding SecureCoding.Analyzers: {ex.Message}");
-                Logger.LogDebug($"Error adding SecureCoding.Analyzers package to {csprojPath}: {ex.Message}");
+                Logger.LogError($"Error adding SecureCoding.Analyzers to {csprojPath}: {ex.Message}");
+                Logger.LogDebug($"Stack trace: {ex.StackTrace}");
                 throw;
             }
         }
@@ -922,8 +921,8 @@ namespace SLC_Package_Converter.Utilities
             }
             catch (Exception ex)
             {
-                Logger.LogError($"Error adding DataMinerSystem.Automation: {ex.Message}");
-                Logger.LogDebug($"Error adding DataMinerSystem.Automation package to {csprojPath}: {ex.Message}");
+                Logger.LogError($"Error adding DataMinerSystem.Automation to {csprojPath}: {ex.Message}");
+                Logger.LogDebug($"Stack trace: {ex.StackTrace}");
                 throw;
             }
         }
@@ -939,8 +938,8 @@ namespace SLC_Package_Converter.Utilities
             }
             catch (Exception ex)
             {
-                Logger.LogError($"Error adding {AutomationPackageName}: {ex.Message}");
-                Logger.LogDebug($"Error adding {AutomationPackageName} package to {csprojPath}: {ex.Message}");
+                Logger.LogError($"Error adding {AutomationPackageName} to {csprojPath}: {ex.Message}");
+                Logger.LogDebug($"Stack trace: {ex.StackTrace}");
                 throw;
             }
         }
@@ -957,8 +956,8 @@ namespace SLC_Package_Converter.Utilities
             }
             catch (Exception ex)
             {
-                Logger.LogError($"Error adding {NewtonsoftJsonPackageName}: {ex.Message}");
-                Logger.LogDebug($"Error adding {NewtonsoftJsonPackageName} package to {csprojPath}: {ex.Message}");
+                Logger.LogError($"Error adding {NewtonsoftJsonPackageName} to {csprojPath}: {ex.Message}");
+                Logger.LogDebug($"Stack trace: {ex.StackTrace}");
                 throw;
             }
         }
