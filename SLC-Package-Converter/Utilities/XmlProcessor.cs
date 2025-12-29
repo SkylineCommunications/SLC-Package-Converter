@@ -757,7 +757,6 @@ namespace SLC_Package_Converter.Utilities
                 Logger.LogDebug($"Source: {sourceCsprojPath}");
                 Logger.LogDebug($"Destination: {destinationCsprojPath}");
                 Logger.LogDebug($"Exception Type: {ex.GetType().Name}");
-                Logger.LogDebug($"Exception Message: {ex.Message}");
                 Logger.LogDebug($"Stack Trace:{Environment.NewLine}{ex.StackTrace}");
                 throw;
             }
