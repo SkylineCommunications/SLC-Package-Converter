@@ -862,6 +862,8 @@ namespace SLC_Package_Converter.Utilities
                         {
                             existingPackage.Add(new XAttribute("Version", version));
                         }
+
+                        Logger.LogDebug($"Updated existing package reference: {packageName} to version {version}");
                     }
                 }
                 else
