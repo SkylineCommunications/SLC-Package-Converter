@@ -92,7 +92,6 @@
             {
                 Logger.LogError($"Error creating branch: {ex.Message}");
                 Logger.LogDebug($"Exception Type: {ex.GetType().Name}");
-                Logger.LogDebug($"Exception Message: {ex.Message}");
                 Logger.LogDebug($"Stack Trace:{Environment.NewLine}{ex.StackTrace}");
                 throw;
             }
