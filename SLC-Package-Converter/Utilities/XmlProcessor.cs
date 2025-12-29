@@ -376,7 +376,7 @@ namespace SLC_Package_Converter.Utilities
                         Logger.LogError($"Error processing file {file}: {ex.Message}");
                     }
                 }
-                // If no files were successfully processed, return empty set (Program.cs will handle the warning)
+                // Return empty set when no files are processed; caller will handle appropriate messaging
                 return processedFiles;
             }
             catch (Exception ex)
