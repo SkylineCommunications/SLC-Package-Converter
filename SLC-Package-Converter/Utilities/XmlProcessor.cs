@@ -46,14 +46,12 @@ namespace SLC_Package_Converter.Utilities
         public static HashSet<string> ProcessXmlFiles(string sourceDir, string destDir, string? slnFile)
         {
             var processedFiles = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            int successfulFileCount = 0; // Track number of successfully processed files
             try
             {
                 // Get all XML files in the source directory
                 string[] xmlFiles = Directory.GetFiles(sourceDir, "*.xml", SearchOption.TopDirectoryOnly);
                 foreach (string file in xmlFiles)
                 {
-                    bool fileProcessed = false; // Track if this file was processed
                     try
                     {
                         // Load the XML document
@@ -145,7 +143,6 @@ namespace SLC_Package_Converter.Utilities
 
                             // Track the processed XML file
                             processedFiles.Add(file);
-                            fileProcessed = true;
 
                             // Track the associated csproj file (only if it exists)
                             string originalCsprojPath = Path.Combine(Path.Combine(Path.GetDirectoryName(file)!, projectName), $"{projectName}.csproj");
@@ -362,10 +359,6 @@ namespace SLC_Package_Converter.Utilities
                             // Add DLL references from XML Param elements to the .csproj
                             AddDllReferencesToCsproj(scriptExe.DllReferences, Path.Combine(projectDirectory, $"{newName}.csproj"));
                         }
-                        if (fileProcessed)
-                        {
-                            successfulFileCount++;
-                        }
                     }
                     catch (XmlException ex)
                     {
@@ -376,12 +369,7 @@ namespace SLC_Package_Converter.Utilities
                         Logger.LogError($"Error processing file {file}: {ex.Message}");
                     }
                 }
-                // If no files were successfully processed, fail
-                if (successfulFileCount == 0)
-                {
-                    Logger.LogError("No XML files were successfully converted. All files were skipped due to errors or invalid format.");
-                    throw new InvalidOperationException("No XML files were successfully converted.");
-                }
+                // Return the set of processed files (may be empty); Program.cs will check count and display appropriate warning
                 return processedFiles;
             }
             catch (Exception ex)
