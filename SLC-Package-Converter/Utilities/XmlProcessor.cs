@@ -376,11 +376,10 @@ namespace SLC_Package_Converter.Utilities
                         Logger.LogError($"Error processing file {file}: {ex.Message}");
                     }
                 }
-                // If no files were successfully processed, fail
+                // If no files were successfully processed, log a warning but continue
                 if (successfulFileCount == 0)
                 {
-                    Logger.LogError("No XML files were successfully converted. All files were skipped due to errors or invalid format.");
-                    throw new InvalidOperationException("No XML files were successfully converted.");
+                    Logger.LogWarning("No XML files were successfully converted. All files were skipped due to errors or invalid format.");
                 }
                 return processedFiles;
             }

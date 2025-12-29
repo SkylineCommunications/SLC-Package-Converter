@@ -129,6 +129,14 @@ class Program
             Logger.LogInfo("Processing XML files...");
             var processedFiles = XmlProcessor.ProcessXmlFiles(SourceDirectory, DestinationDirectory, destSlnFile);
             
+            // Check if any files were processed
+            if (processedFiles.Count == 0)
+            {
+                Logger.LogWarning("No XML files were converted. The package converter completed without making any changes.");
+                Logger.LogInfo("Package conversion completed successfully (no changes made)!");
+                return;
+            }
+            
             Logger.LogInfo("Copying other directories...");
             DirectoryHelper.CopyOtherDirectories(SourceDirectory, DestinationDirectory, ExcludedDirs, ExcludedSubDirs, ExcludedFiles, processedFiles);
             
