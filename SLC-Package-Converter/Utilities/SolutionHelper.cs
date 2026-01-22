@@ -46,14 +46,6 @@ namespace SLC_Package_Converter.Utilities
                         Logger.LogDebug($"Cleaning up original subdirectory: {subdirectory}");
                         Directory.Delete(subdirectory, recursive: true);
                     }
-                    
-                    // Delete all existing .sln files in root directory
-                    string[] existingSlnFiles = Directory.GetFiles(directory, "*.sln", SearchOption.TopDirectoryOnly);
-                    foreach (string slnFile in existingSlnFiles)
-                    {
-                        Logger.LogDebug($"Deleting existing solution file: {slnFile}");
-                        File.Delete(slnFile);
-                    }
 
                     // Create a new empty solution file named after the source directory
                     string newSolutionFileName = Path.GetFileName(directory) + ".sln";
