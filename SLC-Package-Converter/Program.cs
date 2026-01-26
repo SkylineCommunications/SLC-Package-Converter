@@ -87,7 +87,7 @@ class Program
         try
         {
             Logger.LogDebug("Starting SLC-Package-Converter...");
-            
+
             // Validate the existence of the source directory
             if (!Directory.Exists(SourceDirectory))
             {
@@ -95,48 +95,58 @@ class Program
                 return;
             }
 
+            var sourceSlnFile = SolutionHelper.GetSolutionFile(SourceDirectory);
+
+            bool destinationDirMissingOrEmpty = string.IsNullOrEmpty(DestinationDirectory) || !Directory.Exists(DestinationDirectory) || !Directory.EnumerateFileSystemEntries(DestinationDirectory).Any();
+
             // If DestinationDirectory is not provided, generate a temporary directory
-            if (string.IsNullOrEmpty(DestinationDirectory))
+            // If DestinationDirectory exists but is empty, treat it as a new package project
+            // If DestinationDirectory does not exist, create it and add a new package project
+            if (destinationDirMissingOrEmpty)
             {
                 Logger.LogDebug("Creating new package project...");
-                
-                var currentSln = SolutionHelper.GetSolutionFile(SourceDirectory);
+
                 string? currentSlnNameWithoutExtension = null;
-                
-                if (currentSln != null)
+
+                if (sourceSlnFile != null)
                 {
-                    currentSlnNameWithoutExtension = Path.GetFileNameWithoutExtension(currentSln);
+                    currentSlnNameWithoutExtension = Path.GetFileNameWithoutExtension(sourceSlnFile);
                 }
-                
+
                 // Determine the solution name and project name:
                 // ProjectName: Always "Package"
                 // SolutionName: Custom name from --solutionName, otherwise use source solution file name, or "Package" if no solution exists
                 string packageProjectName = "Package";
                 string solutionName = !string.IsNullOrEmpty(SolutionName) ? SolutionName : (currentSlnNameWithoutExtension ?? "Package");
-                
-                DestinationDirectory = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
-                Directory.CreateDirectory(DestinationDirectory);
+
+                if (string.IsNullOrEmpty(DestinationDirectory))
+                {
+                    DestinationDirectory = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+                    Directory.CreateDirectory(DestinationDirectory);
+                }
+                else if (!Directory.Exists(DestinationDirectory))
+                {
+                    Directory.CreateDirectory(DestinationDirectory);
+                }
 
                 // Command to create a new project and solution in the destination directory
                 string createProjectCommand =
                     $"cd \"{DestinationDirectory}\" && " +
                     $"dotnet new dataminer-package-project -o \"{packageProjectName}\" -n \"{packageProjectName}\" -auth \"\" -cdp true -I {IncludeGitHubWorkflow} --force && " +
-                    $"dotnet new sln -n \"{solutionName}\" && " +
+                    $"dotnet new sln -n \"{solutionName}\" --format sln && " +
                     $"dotnet sln add \"{packageProjectName}/{packageProjectName}.csproj\"";
-                
+
                 CommandExecutor.ExecuteCommand(createProjectCommand);
 
                 branchMode = true; // Enable branch mode
             }
 
-            // Retrieve the solution files
-            string? sourceSlnFile = SolutionHelper.GetSolutionFile(SourceDirectory);
             string? destSlnFile = SolutionHelper.GetSolutionFile(DestinationDirectory);
 
             // Process XML files in the source directory and copy other directories
             Logger.LogDebug("Processing XML files...");
             var processedFiles = XmlProcessor.ProcessXmlFiles(SourceDirectory, DestinationDirectory, destSlnFile);
-            
+
             // Check if any files were processed
             // If no XML files were converted, there's no point in copying other files,
             // adding references, or creating a branch since the tool's purpose is XML conversion
@@ -148,7 +158,7 @@ class Program
 
             Logger.LogDebug("Copying other directories...");
             DirectoryHelper.CopyOtherDirectories(SourceDirectory, DestinationDirectory, ExcludedDirs, ExcludedSubDirs, ExcludedFiles, processedFiles);
-            
+
             Logger.LogDebug("Adding shared project references...");
             SolutionHelper.AddSharedProjectReferences(sourceSlnFile, destSlnFile);
 
@@ -158,7 +168,7 @@ class Program
                 Logger.LogDebug("Creating branch and copying files...");
                 BranchManager.CreateBranchAndCopyFiles(SourceDirectory, DestinationDirectory, BranchName, PreserveHistory);
             }
-            
+
             Logger.LogInfo("Package conversion completed successfully!");
         }
         catch (DirectoryNotFoundException ex)
