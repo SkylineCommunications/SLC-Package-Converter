@@ -115,6 +115,8 @@ class Program
                 destinationDirMissingOrEmpty = !Directory.EnumerateFileSystemEntries(DestinationDirectory).Any();
             }
 
+            string? destSlnFile;
+            
             // If DestinationDirectory is not provided, generate a temporary directory
             // If DestinationDirectory exists but is empty, treat it as a new package project
             // If DestinationDirectory does not exist, create it and add a new package project
@@ -173,10 +175,15 @@ class Program
                 }
 
                 branchMode = true; // Enable branch mode
+                
+                // Since we just created the solution, we know its exact path
+                destSlnFile = Path.Combine(DestinationDirectory, solutionName + ".sln");
             }
-
-            // Retrieve the solution file from the destination directory
-            string? destSlnFile = SolutionHelper.GetSolutionFile(DestinationDirectory);
+            else
+            {
+                // Destination directory already exists with content - find the existing solution file
+                destSlnFile = SolutionHelper.GetSolutionFile(DestinationDirectory);
+            }
 
             // Process XML files in the source directory and copy other directories
                 Logger.LogDebug("Processing XML files...");
