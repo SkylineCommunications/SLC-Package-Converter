@@ -87,7 +87,7 @@ class Program
         try
         {
             Logger.LogDebug("Starting SLC-Package-Converter...");
-            
+
             // Validate the existence of the source directory
             if (!Directory.Exists(SourceDirectory))
             {
@@ -95,42 +95,71 @@ class Program
                 return;
             }
 
-            // If DestinationDirectory is not provided, generate a temporary directory
+            var sourceSlnFile = SolutionHelper.GetSolutionFile(SourceDirectory);
+
+            // Determine if the destination directory is missing or empty
+            bool destinationDirMissingOrEmpty;
             if (string.IsNullOrEmpty(DestinationDirectory))
             {
+                // Destination directory not provided
+                destinationDirMissingOrEmpty = true;
+            }
+            else if (!Directory.Exists(DestinationDirectory))
+            {
+                // Destination directory does not exist
+                destinationDirMissingOrEmpty = true;
+            }
+            else
+            {
+                // Destination directory exists - check if it's empty
+                destinationDirMissingOrEmpty = !Directory.EnumerateFileSystemEntries(DestinationDirectory).Any();
+            }
+
+            // If DestinationDirectory is not provided, generate a temporary directory
+            // If DestinationDirectory exists but is empty, treat it as a new package project
+            // If DestinationDirectory does not exist, create it and add a new package project
+            if (destinationDirMissingOrEmpty)
+            {
                 Logger.LogDebug("Creating new package project...");
-                
-                var currentSln = SolutionHelper.GetSolutionFile(SourceDirectory);
+
                 string? currentSlnNameWithoutExtension = null;
-                
-                if (currentSln != null)
+
+                if (sourceSlnFile != null)
                 {
-                    currentSlnNameWithoutExtension = Path.GetFileNameWithoutExtension(currentSln);
+                    currentSlnNameWithoutExtension = Path.GetFileNameWithoutExtension(sourceSlnFile);
                 }
-                
+
                 // Determine the solution name and project name:
                 // ProjectName: Always "Package"
                 // SolutionName: Custom name from --solutionName, otherwise use source solution file name, or "Package" if no solution exists
                 string packageProjectName = "Package";
                 string solutionName = !string.IsNullOrEmpty(SolutionName) ? SolutionName : (currentSlnNameWithoutExtension ?? "Package");
-                
-                DestinationDirectory = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
-                Directory.CreateDirectory(DestinationDirectory);
+
+                if (string.IsNullOrEmpty(DestinationDirectory))
+                {
+                    DestinationDirectory = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+                    Directory.CreateDirectory(DestinationDirectory);
+                }
+                else if (!Directory.Exists(DestinationDirectory))
+                {
+                    Directory.CreateDirectory(DestinationDirectory);
+                }
 
                 // Command to create a new project and solution in the destination directory
+                // Note: --format sln is required to ensure .sln format compatibility with DataMiner DIS
+                // Starting with .NET 10, dotnet new sln creates .slnx files by default, which are not yet supported by DIS
                 string createProjectCommand =
                     $"cd \"{DestinationDirectory}\" && " +
                     $"dotnet new dataminer-package-project -o \"{packageProjectName}\" -n \"{packageProjectName}\" -auth \"\" -cdp true -I {IncludeGitHubWorkflow} --force && " +
-                    $"dotnet new sln -n \"{solutionName}\" && " +
+                    $"dotnet new sln -n \"{solutionName}\" --format sln && " +
                     $"dotnet sln add \"{packageProjectName}/{packageProjectName}.csproj\"";
-                
+
                 CommandExecutor.ExecuteCommand(createProjectCommand);
 
                 branchMode = true; // Enable branch mode
             }
 
-            // Retrieve the solution files
-            string? sourceSlnFile = SolutionHelper.GetSolutionFile(SourceDirectory);
+            // Retrieve the solution file from the destination directory
             string? destSlnFile = SolutionHelper.GetSolutionFile(DestinationDirectory);
 
             // Process XML files in the source directory and copy other directories
