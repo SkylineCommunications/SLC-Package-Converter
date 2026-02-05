@@ -243,6 +243,26 @@ namespace SLC_Package_Converter.Utilities
                     return true;
                 }
 
+                // Check if all solution files are empty or contain only whitespace
+                bool allSlnFilesEmpty = true;
+                foreach (string slnFile in slnFiles)
+                {
+                    var slnContent = File.ReadAllText(slnFile);
+                    if (!string.IsNullOrWhiteSpace(slnContent))
+                    {
+                        allSlnFilesEmpty = false;
+                        break;
+                    }
+                }
+
+                if (allSlnFilesEmpty)
+                {
+                    // If all solution files are empty (e.g., created after flattening Gerrit subfolder structure),
+                    // treat it the same as having no solution files - assume the project should be processed
+                    Logger.LogWarning($"All solution files are empty. Cannot verify if '{fileName}' should be processed. Proceeding with processing.");
+                    return true;
+                }
+
                 // Search in all solution files
                 foreach (string slnFile in slnFiles)
                 {
