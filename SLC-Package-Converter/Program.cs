@@ -146,15 +146,31 @@ class Program
                 }
 
                 // Command to create a new project and solution in the destination directory
-                // Note: --format sln is required to ensure .sln format compatibility with DataMiner DIS
-                // Starting with .NET 10, dotnet new sln creates .slnx files by default, which are not yet supported by DIS
+                // Note: --format sln is required on .NET 10+ to ensure .sln format compatibility with DataMiner DIS
+                // Starting with .NET 10, dotnet new sln can create .slnx files, which are not yet supported by DIS
+                // We try with --format first, and fall back to the old way if the option is not available
                 string createProjectCommand =
                     $"cd \"{DestinationDirectory}\" && " +
                     $"dotnet new dataminer-package-project -o \"{packageProjectName}\" -n \"{packageProjectName}\" -auth \"\" -cdp true -I {IncludeGitHubWorkflow} --force && " +
                     $"dotnet new sln -n \"{solutionName}\" --format sln && " +
                     $"dotnet sln add \"{packageProjectName}/{packageProjectName}.csproj\"";
 
-                CommandExecutor.ExecuteCommand(createProjectCommand);
+                var output = CommandExecutor.ExecuteCommand(createProjectCommand, returnOutput: true);
+                
+                // Check if the command failed due to --format option not being available
+                if (output != null && output.Contains("'--format' is not a valid option"))
+                {
+                    Logger.LogDebug("--format option not available, retrying without it...");
+                    
+                    // Retry without --format option
+                    createProjectCommand =
+                        $"cd \"{DestinationDirectory}\" && " +
+                        $"dotnet new dataminer-package-project -o \"{packageProjectName}\" -n \"{packageProjectName}\" -auth \"\" -cdp true -I {IncludeGitHubWorkflow} --force && " +
+                        $"dotnet new sln -n \"{solutionName}\" && " +
+                        $"dotnet sln add \"{packageProjectName}/{packageProjectName}.csproj\"";
+                    
+                    CommandExecutor.ExecuteCommand(createProjectCommand);
+                }
 
                 branchMode = true; // Enable branch mode
             }
@@ -163,7 +179,7 @@ class Program
             string? destSlnFile = SolutionHelper.GetSolutionFile(DestinationDirectory);
 
             // Process XML files in the source directory and copy other directories
-            Logger.LogDebug("Processing XML files...");
+                Logger.LogDebug("Processing XML files...");
             var processedFiles = XmlProcessor.ProcessXmlFiles(SourceDirectory, DestinationDirectory, destSlnFile);
             
             // Check if any files were processed

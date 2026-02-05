@@ -1,4 +1,6 @@
-﻿namespace SLC_Package_Converter.Utilities
+﻿using static System.Runtime.InteropServices.JavaScript.JSType;
+
+namespace SLC_Package_Converter.Utilities
 {
     public static class CommandExecutor
     {
@@ -45,36 +47,40 @@
                         return null;
                     }
 
+                    string output;
+                    string error;
+                    
                     using (var reader = process.StandardOutput)
                     {
-                        string output = reader.ReadToEnd();
-                        
-                        using (var errorReader = process.StandardError)
+                        output = reader.ReadToEnd();
+                    }
+                    
+                    using (var errorReader = process.StandardError)
+                    {
+                        error = errorReader.ReadToEnd();
+                    }
+                    
+                    process.WaitForExit();
+                    int exitCode = process.ExitCode;
+                    
+                    // Log only errors (unless we're checking for specific error messages)
+                    if (!string.IsNullOrEmpty(error) || exitCode != 0)
+                    {
+                        Logger.LogError($"Command failed (exit code {exitCode}): {command}");
+                        if (!string.IsNullOrEmpty(error))
                         {
-                            string error = errorReader.ReadToEnd();
-                            
-                            process.WaitForExit();
-                            int exitCode = process.ExitCode;
-                            
-                            // Log only errors
-                            if (!string.IsNullOrEmpty(error) || exitCode != 0)
-                            {
-                                Logger.LogError($"Command failed (exit code {exitCode}): {command}");
-                                if (!string.IsNullOrEmpty(error))
-                                {
-                                    Logger.LogError($"Error output: {error}");
-                                }
-                            }
+                            Logger.LogError($"Error output: {error}");
                         }
-                        
-                        if (returnOutput)
-                        {
-                            return output;
-                        }
-                        else
-                        {
-                            return null;
-                        }
+                    }
+
+                    if (returnOutput)
+                    {
+                        // Return combined output and error for caller to check
+                        return output + error;
+                    }
+                    else
+                    {
+                        return null;
                     }
                 }
             }
