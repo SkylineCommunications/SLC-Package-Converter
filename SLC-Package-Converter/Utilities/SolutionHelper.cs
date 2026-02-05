@@ -34,7 +34,19 @@ namespace SLC_Package_Converter.Utilities
                 
                 if (subdirectoriesWithSln.Count > 0)
                 {
-                    // Copy files from all subdirectories with solution files TODO: (PROBLEM, THIS OVERWRITES FILES WITH SAME NAME, CAUSING https://github.com/SkylineCommunications/SLC-Package-Converter/issues/50, PLEASE WRITE GOOD WARNING MESSAGES ABOUT THIS AND MAYBE USE _1 and _2 to fix this issue)
+                    // Collect all solution file contents before copying/deleting
+                    List<string[]> solutionFileContents = new List<string[]>();
+                    foreach (string subdirectory in subdirectoriesWithSln)
+                    {
+                        string[] subSlnFiles = Directory.GetFiles(subdirectory, "*.sln", SearchOption.TopDirectoryOnly);
+                        if (subSlnFiles.Length > 0)
+                        {
+                            // Read the solution file content before we delete the directory
+                            solutionFileContents.Add(File.ReadAllLines(subSlnFiles[0]));
+                        }
+                    }
+                    
+                    // Copy files from all subdirectories with solution files
                     foreach (string subdirectory in subdirectoriesWithSln)
                     {
                         CopySubdirectoryFilesToRoot(subdirectory, directory);
@@ -47,13 +59,12 @@ namespace SLC_Package_Converter.Utilities
                         Directory.Delete(subdirectory, recursive: true);
                     }
 
-                    // Create a new empty solution file named after the source directory
-                    // TODO: IS THIS REALLY NEEDED?
+                    // Create a merged solution file that contains all project references from subdirectory solution files
                     string newSolutionFileName = Path.GetFileName(directory) + ".sln";
                     string newSolutionPath = Path.Combine(directory, newSolutionFileName);
                     
-                    Logger.LogDebug($"Creating new empty solution file: {newSolutionPath}");
-                    File.WriteAllText(newSolutionPath, string.Empty);
+                    Logger.LogDebug($"Creating merged solution file: {newSolutionPath}");
+                    MergeSolutionFiles(solutionFileContents, newSolutionPath);
                     
                     return newSolutionPath;
                 }
@@ -265,6 +276,72 @@ namespace SLC_Package_Converter.Utilities
                 Logger.LogWarning($"Error checking if file '{fileName}' exists in solution files: {ex.Message}");
                 // If we can't check, assume it should be processed
                 return true;
+            }
+        }
+
+        private static void MergeSolutionFiles(List<string[]> solutionFileContents, string outputPath)
+        {
+            try
+            {
+                Logger.LogDebug($"Merging {solutionFileContents.Count} solution files into {outputPath}");
+                
+                // Collect all project blocks from all solution files
+                List<string> projectBlocks = new List<string>();
+                
+                foreach (string[] lines in solutionFileContents)
+                {
+                    for (int i = 0; i < lines.Length; i++)
+                    {
+                        string line = lines[i].TrimStart();
+                        
+                        // Collect Project(...) declarations and their corresponding EndProject
+                        if (line.StartsWith("Project(", StringComparison.OrdinalIgnoreCase))
+                        {
+                            projectBlocks.Add(lines[i]);
+                            // Add EndProject line if it exists on next line
+                            if (i + 1 < lines.Length && lines[i + 1].TrimStart().Equals("EndProject", StringComparison.OrdinalIgnoreCase))
+                            {
+                                projectBlocks.Add(lines[i + 1]);
+                            }
+                        }
+                    }
+                }
+                
+                Logger.LogDebug($"Found {projectBlocks.Count / 2} projects to include in merged solution");
+                
+                // Create a new solution file with standard header and the collected projects
+                List<string> outputLines = new List<string>
+                {
+                    "",
+                    "Microsoft Visual Studio Solution File, Format Version 12.00",
+                    "# Visual Studio Version 17",
+                    "VisualStudioVersion = 17.0.31903.59",
+                    "MinimumVisualStudioVersion = 10.0.40219.1"
+                };
+                
+                // Add all project blocks
+                outputLines.AddRange(projectBlocks);
+                
+                // Add Global section (standard boilerplate)
+                outputLines.Add("Global");
+                outputLines.Add("\tGlobalSection(SolutionConfigurationPlatforms) = preSolution");
+                outputLines.Add("\t\tDebug|Any CPU = Debug|Any CPU");
+                outputLines.Add("\t\tRelease|Any CPU = Release|Any CPU");
+                outputLines.Add("\tEndGlobalSection");
+                outputLines.Add("\tGlobalSection(SolutionProperties) = preSolution");
+                outputLines.Add("\t\tHideSolutionNode = FALSE");
+                outputLines.Add("\tEndGlobalSection");
+                outputLines.Add("EndGlobal");
+                
+                // Write the merged solution file
+                File.WriteAllLines(outputPath, outputLines);
+                
+                Logger.LogDebug($"Successfully created merged solution file with {projectBlocks.Count / 2} projects");
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError($"Error merging solution files: {ex.Message}");
+                throw;
             }
         }
 
