@@ -35,6 +35,7 @@ namespace SLC_Package_Converter.Utilities
                 if (subdirectoriesWithSln.Count > 0)
                 {
                     // Copy files from all subdirectories with solution files
+                    // Note: If files with the same name exist in multiple subdirectories, later copies will overwrite earlier ones
                     foreach (string subdirectory in subdirectoriesWithSln)
                     {
                         CopySubdirectoryFilesToRoot(subdirectory, directory);
@@ -53,7 +54,7 @@ namespace SLC_Package_Converter.Utilities
                     if (copiedSlnFiles.Length > 0)
                     {
                         Logger.LogDebug($"Found {copiedSlnFiles.Length} solution file(s) after copying from subdirectories");
-                        return copiedSlnFiles.FirstOrDefault();
+                        return copiedSlnFiles[0];
                     }
                 }
 
