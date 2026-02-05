@@ -15,17 +15,17 @@ namespace SLC_Package_Converter.Utilities
                     return slnFiles.FirstOrDefault();
                 }
 
-                // If no solution file found in root, search one level down in subdirectories
-                Logger.LogDebug("No solution file found in root directory. Searching in subdirectories...");
-                string[] subdirectories = Directory.GetDirectories(directory);
+                // If no solution file found in root, search recursively in all subdirectories
+                Logger.LogDebug("No solution file found in root directory. Searching recursively in subdirectories...");
                 
                 List<string> subdirectoriesWithSln = new List<string>();
                 
-                // Find all subdirectories that contain .sln files
-                foreach (string subdirectory in subdirectories)
+                // Find all subdirectories that contain .sln files (recursive search)
+                string[] allSubSlnFiles = Directory.GetFiles(directory, "*.sln", SearchOption.AllDirectories);
+                foreach (string slnFile in allSubSlnFiles)
                 {
-                    string[] subSlnFiles = Directory.GetFiles(subdirectory, "*.sln", SearchOption.TopDirectoryOnly);
-                    if (subSlnFiles.Length > 0)
+                    string? subdirectory = Path.GetDirectoryName(slnFile);
+                    if (subdirectory != null && !subdirectoriesWithSln.Contains(subdirectory))
                     {
                         Logger.LogDebug($"Solution file found in subdirectory: {subdirectory}");
                         subdirectoriesWithSln.Add(subdirectory);
@@ -131,10 +131,10 @@ namespace SLC_Package_Converter.Utilities
             {
                 Logger.LogDebug($"Copying files from {subdirectoryPath} to {rootDirectory}");
                 
-                // Get all files in the subdirectory
-                string[] files = Directory.GetFiles(subdirectoryPath, "*", SearchOption.TopDirectoryOnly);
+                // Get all files recursively in the subdirectory and flatten them to root
+                string[] allFiles = Directory.GetFiles(subdirectoryPath, "*", SearchOption.AllDirectories);
                 
-                foreach (string sourceFile in files)
+                foreach (string sourceFile in allFiles)
                 {
                     string fileName = Path.GetFileName(sourceFile);
                     string destinationFile = Path.Combine(rootDirectory, fileName);
@@ -162,22 +162,6 @@ namespace SLC_Package_Converter.Utilities
                     
                     // Copy the file, overwriting if it exists
                     File.Copy(sourceFile, destinationFile, true);
-                }
-                
-                // Also copy subdirectories from the subdirectory
-                string[] subDirectories = Directory.GetDirectories(subdirectoryPath);
-                foreach (string subDir in subDirectories)
-                {
-                    string subDirName = Path.GetFileName(subDir);
-                    string destinationSubDir = Path.Combine(rootDirectory, subDirName);
-                    
-                    if (!Directory.Exists(destinationSubDir))
-                    {
-                        Directory.CreateDirectory(destinationSubDir);
-                        Logger.LogDebug($"Created directory {subDirName} in root");
-                    }
-                    
-                    CopyDirectoryRecursively(subDir, destinationSubDir);
                 }
                 
                 Logger.LogDebug($"Successfully copied all files from {subdirectoryPath} to root directory");
@@ -240,32 +224,6 @@ namespace SLC_Package_Converter.Utilities
                 {
                     // If no solution file exists, we can't verify - assume the project should be processed
                     Logger.LogWarning($"No solution file found in source directory or subdirectories. Cannot verify if '{fileName}' should be processed. Proceeding with processing.");
-                    return true;
-                }
-
-                // Check if all solution files are empty or contain only whitespace
-                bool allSlnFilesEmpty = true;
-                foreach (string slnFile in slnFiles)
-                {
-                    // Quick check: if file size is > 0, read and verify content
-                    var fileInfo = new FileInfo(slnFile);
-                    if (fileInfo.Length > 0)
-                    {
-                        var slnContent = File.ReadAllText(slnFile);
-                        if (!string.IsNullOrWhiteSpace(slnContent))
-                        {
-                            allSlnFilesEmpty = false;
-                            break;
-                        }
-                    }
-                    // Files with Length == 0 are definitely empty, continue checking others
-                }
-
-                if (allSlnFilesEmpty)
-                {
-                    // If all solution files are empty (e.g., created after flattening Gerrit subfolder structure),
-                    // treat it the same as having no solution files - assume the project should be processed
-                    Logger.LogWarning($"All solution files are empty. Cannot verify if '{fileName}' should be processed. Proceeding with processing.");
                     return true;
                 }
 
