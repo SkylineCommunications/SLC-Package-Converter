@@ -18,17 +18,16 @@ namespace SLC_Package_Converter.Utilities
                 // If no solution file found in root, search recursively in all subdirectories
                 Logger.LogDebug("No solution file found in root directory. Searching recursively in subdirectories...");
                 
-                List<string> subdirectoriesWithSln = new List<string>();
+                HashSet<string> subdirectoriesWithSln = new HashSet<string>();
                 
                 // Find all subdirectories that contain .sln files (recursive search)
                 string[] allSubSlnFiles = Directory.GetFiles(directory, "*.sln", SearchOption.AllDirectories);
                 foreach (string slnFile in allSubSlnFiles)
                 {
                     string? subdirectory = Path.GetDirectoryName(slnFile);
-                    if (subdirectory != null && !subdirectoriesWithSln.Contains(subdirectory))
+                    if (subdirectory != null && subdirectoriesWithSln.Add(subdirectory))
                     {
                         Logger.LogDebug($"Solution file found in subdirectory: {subdirectory}");
-                        subdirectoriesWithSln.Add(subdirectory);
                     }
                 }
                 
