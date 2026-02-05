@@ -247,12 +247,18 @@ namespace SLC_Package_Converter.Utilities
                 bool allSlnFilesEmpty = true;
                 foreach (string slnFile in slnFiles)
                 {
-                    var slnContent = File.ReadAllText(slnFile);
-                    if (!string.IsNullOrWhiteSpace(slnContent))
+                    // Quick check: if file size is > 0, read and verify content
+                    var fileInfo = new FileInfo(slnFile);
+                    if (fileInfo.Length > 0)
                     {
-                        allSlnFilesEmpty = false;
-                        break;
+                        var slnContent = File.ReadAllText(slnFile);
+                        if (!string.IsNullOrWhiteSpace(slnContent))
+                        {
+                            allSlnFilesEmpty = false;
+                            break;
+                        }
                     }
+                    // Files with Length == 0 are definitely empty, continue checking others
                 }
 
                 if (allSlnFilesEmpty)
