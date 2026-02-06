@@ -47,8 +47,7 @@ namespace SLC_Package_Converter.Utilities
                         Directory.Delete(subdirectory, recursive: true);
                     }
 
-                    // Create a new empty solution file named after the source directory
-                    // TODO: IS THIS REALLY NEEDED?
+                    // Create a new empty solution file named after the source directory, this is being used just to retrieve newSolutionName later on, maybe this can be improved? (TODO)
                     string newSolutionFileName = Path.GetFileName(directory) + ".sln";
                     string newSolutionPath = Path.Combine(directory, newSolutionFileName);
                     
@@ -140,29 +139,50 @@ namespace SLC_Package_Converter.Utilities
                     string fileName = Path.GetFileName(sourceFile);
                     string destinationFile = Path.Combine(rootDirectory, fileName);
                     
-                    // Check if file already exists in root directory
-                    if (File.Exists(destinationFile))
+                    // Special handling for .sln files - don't overwrite, add numeric suffix
+                    if (fileName.EndsWith(".sln", StringComparison.OrdinalIgnoreCase) && File.Exists(destinationFile))
                     {
-                        // Compare file sizes and warn if different
-                        FileInfo sourceInfo = new FileInfo(sourceFile);
-                        FileInfo destInfo = new FileInfo(destinationFile);
+                        string fileNameWithoutExt = Path.GetFileNameWithoutExtension(fileName);
+                        string extension = Path.GetExtension(fileName);
+                        int suffix = 1;
                         
-                        if (sourceInfo.Length != destInfo.Length)
+                        // Find next available numeric suffix
+                        while (File.Exists(destinationFile))
                         {
-                            Logger.LogWarning($"Replacing {fileName}: size differs (was {destInfo.Length}, now {sourceInfo.Length} bytes)");
+                            fileName = $"{fileNameWithoutExt}_{suffix}{extension}";
+                            destinationFile = Path.Combine(rootDirectory, fileName);
+                            suffix++;
                         }
-                        else
-                        {
-                            Logger.LogDebug($"Replacing {fileName} (same file size: {sourceInfo.Length} bytes)");
-                        }
+                        
+                        Logger.LogWarning($"Solution file already exists. Copying as {fileName} to avoid overwriting.");
+                        File.Copy(sourceFile, destinationFile, false);
                     }
                     else
                     {
-                        Logger.LogDebug($"Copying {fileName} to root directory");
+                        // Check if file already exists in root directory
+                        if (File.Exists(destinationFile))
+                        {
+                            // Compare file sizes and warn if different
+                            FileInfo sourceInfo = new FileInfo(sourceFile);
+                            FileInfo destInfo = new FileInfo(destinationFile);
+                            
+                            if (sourceInfo.Length != destInfo.Length)
+                            {
+                                Logger.LogWarning($"Replacing {fileName}: size differs (was {destInfo.Length}, now {sourceInfo.Length} bytes)");
+                            }
+                            else
+                            {
+                                Logger.LogDebug($"Replacing {fileName} (same file size: {sourceInfo.Length} bytes)");
+                            }
+                        }
+                        else
+                        {
+                            Logger.LogDebug($"Copying {fileName} to root directory");
+                        }
+                        
+                        // Copy the file, overwriting if it exists
+                        File.Copy(sourceFile, destinationFile, true);
                     }
-                    
-                    // Copy the file, overwriting if it exists
-                    File.Copy(sourceFile, destinationFile, true);
                 }
                 
                 // Also copy subdirectories from the subdirectory
