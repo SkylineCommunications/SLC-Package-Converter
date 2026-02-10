@@ -34,7 +34,7 @@ namespace SLC_Package_Converter.Utilities
                 
                 if (subdirectoriesWithSln.Count > 0)
                 {
-                    // Copy files from all subdirectories with solution files TODO: (PROBLEM, THIS OVERWRITES FILES WITH SAME NAME, CAUSING https://github.com/SkylineCommunications/SLC-Package-Converter/issues/50, PLEASE WRITE GOOD WARNING MESSAGES ABOUT THIS AND MAYBE USE _1 and _2 to fix this issue)
+                    // Copy files from all subdirectories with solution files
                     foreach (string subdirectory in subdirectoriesWithSln)
                     {
                         CopySubdirectoryFilesToRoot(subdirectory, directory);
