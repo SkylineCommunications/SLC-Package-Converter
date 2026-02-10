@@ -142,19 +142,21 @@ namespace SLC_Package_Converter.Utilities
                     // Special handling for .sln files - don't overwrite, add numeric suffix
                     if (fileName.EndsWith(".sln", StringComparison.OrdinalIgnoreCase) && File.Exists(destinationFile))
                     {
+                        string originalFileName = fileName;
                         string fileNameWithoutExt = Path.GetFileNameWithoutExtension(fileName);
                         string extension = Path.GetExtension(fileName);
                         int suffix = 1;
                         
                         // Find next available numeric suffix
-                        while (File.Exists(destinationFile))
+                        do
                         {
                             fileName = $"{fileNameWithoutExt}_{suffix}{extension}";
                             destinationFile = Path.Combine(rootDirectory, fileName);
                             suffix++;
                         }
+                        while (File.Exists(destinationFile));
                         
-                        Logger.LogWarning($"Solution file already exists. Copying as {fileName} to avoid overwriting.");
+                        Logger.LogWarning($"Solution file '{originalFileName}' already exists. Copying as '{fileName}' to avoid overwriting.");
                         File.Copy(sourceFile, destinationFile, false);
                     }
                     else
@@ -228,19 +230,21 @@ namespace SLC_Package_Converter.Utilities
                 // Special handling for .sln files - don't overwrite, add numeric suffix
                 if (fileName.EndsWith(".sln", StringComparison.OrdinalIgnoreCase) && File.Exists(destFile))
                 {
+                    string originalFileName = fileName;
                     string fileNameWithoutExt = Path.GetFileNameWithoutExtension(fileName);
                     string extension = Path.GetExtension(fileName);
                     int suffix = 1;
                     
                     // Find next available numeric suffix
-                    while (File.Exists(destFile))
+                    do
                     {
                         fileName = $"{fileNameWithoutExt}_{suffix}{extension}";
                         destFile = Path.Combine(destDir, fileName);
                         suffix++;
                     }
+                    while (File.Exists(destFile));
                     
-                    Logger.LogWarning($"Solution file already exists in {Path.GetFileName(destDir)}. Copying as {fileName} to avoid overwriting.");
+                    Logger.LogWarning($"Solution file '{originalFileName}' already exists in {Path.GetFileName(destDir)}. Copying as '{fileName}' to avoid overwriting.");
                     File.Copy(file, destFile, false);
                 }
                 else
