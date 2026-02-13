@@ -3,6 +3,10 @@ name: Cross-Platform Build and Release
 on:
   release:
     types: [published]
+  pull_request:
+    branches:
+      - main
+      - master
 
 jobs:
   build-and-release:
@@ -27,14 +31,32 @@ jobs:
       - name: Publish for Windows-x64
         run: dotnet publish SLC-Package-Converter/SLC-Package-Converter.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o publish/windows
 
-      - name: Upload Linux binary
+      - name: Upload Linux binary as artifact (PR only)
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-x64-binary
+          path: publish/linux/*
+          retention-days: 30
+
+      - name: Upload Windows binary as artifact (PR only)
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-x64-binary
+          path: publish/windows/*
+          retention-days: 30
+
+      - name: Upload Linux binary to release
+        if: github.event_name == 'release'
         uses: softprops/action-gh-release@v2
         with:
           files: publish/linux/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Upload Windows binary
+      - name: Upload Windows binary to release
+        if: github.event_name == 'release'
         uses: softprops/action-gh-release@v2
         with:
           files: publish/windows/*
