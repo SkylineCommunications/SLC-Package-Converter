@@ -4,6 +4,16 @@ namespace SLC_Package_Converter.Utilities
 {
     public static class SolutionHelper
     {
+        /// <summary>
+        /// Gets the solution file from the directory, handling two project structure types:
+        /// Type A: .sln file is in the root directory (straightforward case)
+        /// Type B: .sln file(s) are in subdirectories (nested structure that needs flattening)
+        /// 
+        /// For Type B projects, this method flattens the directory structure by:
+        /// 1. Copying all files from subdirectories to root
+        /// 2. Deleting the original nested subdirectories
+        /// 3. Creating a placeholder .sln file for naming purposes
+        /// </summary>
         public static string? GetSolutionFile(string directory)
         {
             try
@@ -34,7 +44,7 @@ namespace SLC_Package_Converter.Utilities
                 
                 if (subdirectoriesWithSln.Count > 0)
                 {
-                    // Copy files from all subdirectories with solution files
+                    // Copy files from all subdirectories with solution files to flatten the structure
                     foreach (string subdirectory in subdirectoriesWithSln)
                     {
                         CopySubdirectoryFilesToRoot(subdirectory, directory);
@@ -47,11 +57,13 @@ namespace SLC_Package_Converter.Utilities
                         Directory.Delete(subdirectory, recursive: true);
                     }
 
-                    // Create a new empty solution file named after the source directory, this is being used just to retrieve newSolutionName later on, maybe this can be improved? (TODO)
+                    // Create a placeholder solution file named after the source directory
+                    // This is used to derive the solution name in Program.cs when creating the destination package
+                    // The actual content doesn't matter - we just need the filename for naming consistency
                     string newSolutionFileName = Path.GetFileName(directory) + ".sln";
                     string newSolutionPath = Path.Combine(directory, newSolutionFileName);
                     
-                    Logger.LogDebug($"Creating new empty solution file: {newSolutionPath}");
+                    Logger.LogDebug($"Creating placeholder solution file: {newSolutionPath}");
                     File.WriteAllText(newSolutionPath, string.Empty);
                     
                     return newSolutionPath;
@@ -65,6 +77,7 @@ namespace SLC_Package_Converter.Utilities
                 throw;
             }
         }
+        
         public static void AddSharedProjectReferences(string? sourceSlnFile, string? destSlnFile)
         {
             try
@@ -125,6 +138,14 @@ namespace SLC_Package_Converter.Utilities
             }
         }
 
+        /// <summary>
+        /// Copies files from a subdirectory to the root directory with special handling for .sln files.
+        /// This is used when flattening legacy project structures (Type B projects).
+        /// Differs from CopyDirectoryRecursively by:
+        /// - Avoiding .sln file name collisions (adds numeric suffix)
+        /// - Providing detailed file size comparison warnings
+        /// - Moving up one level instead of recursive deep copying
+        /// </summary>
         private static void CopySubdirectoryFilesToRoot(string subdirectoryPath, string rootDirectory)
         {
             try
@@ -185,7 +206,7 @@ namespace SLC_Package_Converter.Utilities
                     }
                 }
                 
-                // Also copy subdirectories from the subdirectory
+                // Also copy nested subdirectories from the subdirectory
                 string[] subDirectories = Directory.GetDirectories(subdirectoryPath);
                 foreach (string subDir in subDirectories)
                 {
@@ -210,6 +231,11 @@ namespace SLC_Package_Converter.Utilities
             }
         }
 
+        /// <summary>
+        /// Generic recursive directory copy helper.
+        /// Used by CopySubdirectoryFilesToRoot to handle nested directory structures.
+        /// Simpler than CopySubdirectoryFilesToRoot - just copies everything with basic overwrites.
+        /// </summary>
         private static void CopyDirectoryRecursively(string sourceDir, string destDir)
         {
             // Create destination directory if it doesn't exist
