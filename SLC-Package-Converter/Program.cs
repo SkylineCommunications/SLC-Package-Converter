@@ -175,6 +175,13 @@ class Program
                 branchMode = true; // Enable branch mode
             }
 
+            // At this point, DestinationDirectory is guaranteed to be set
+            if (string.IsNullOrEmpty(DestinationDirectory))
+            {
+                Logger.LogError("Destination directory could not be determined.");
+                return;
+            }
+
             // Retrieve the solution file from the destination directory
             string? destSlnFile = SolutionHelper.GetSolutionFile(DestinationDirectory);
 
