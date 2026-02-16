@@ -13,6 +13,7 @@ Download the latest release from the [Releases page](https://github.com/SkylineC
 | `SLC-Package-Converter.exe --sourceDir <SourceDirectory>` | Convert scripts in folder |
 | `--destDir <DestinationDirectory>` | Output to custom folder |
 | `--solutionName <CustomName>` | Specifies a custom solution name following the [naming conventions](https://docs.dataminer.services/develop/CICD/Skyline%20Communications/Github/Use_Github_Guidelines.html) (e.g., `SLC-AS-MediaOps`). |
+| `--solutionFormat <slnx|sln>` | Solution format (default: `slnx`). Use `sln` for legacy format. |
 | `--includeGitHubWorkflow <None|Basic|Complete>` | Add GitHub workflow |
 | `--branchName <BranchName>` | The newly created branch name |
 | `--preserveHistory` | Preserve git history |

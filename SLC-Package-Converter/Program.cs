@@ -13,6 +13,7 @@ class Program
         string BranchName = "converted-package"; // Default value
         bool PreserveHistory = false; // Default value (false means use orphan branch)
         bool DebugMode = false; // Default value
+        string SolutionFormat = "slnx"; // Default value
 
         for (int i = 0; i < args.Length; i++)
         {
@@ -41,6 +42,11 @@ class Program
                 Console.WriteLine("Error: --solutionName requires a value.");
                 return;
             }
+            else if (args[i] == "--solutionFormat" && i + 1 < args.Length)
+            {
+                SolutionFormat = args[i + 1];
+                i++; // Skip the value
+            }
             else if (args[i] == "--includeGitHubWorkflow" && i + 1 < args.Length)
             {
                 IncludeGitHubWorkflow = args[i + 1];
@@ -63,7 +69,7 @@ class Program
 
         if (string.IsNullOrEmpty(SourceDirectory))
         {
-            Console.WriteLine("Usage: SLC-Package-Converter.exe --sourceDir <SourceDirectory> [--destDir <DestinationDirectory>] [--solutionName <CustomName>] [--includeGitHubWorkflow <None|Basic|Complete>] [--branchName <BranchName>] [--preserveHistory] [--debug]");
+            Console.WriteLine("Usage: SLC-Package-Converter.exe --sourceDir <SourceDirectory> [--destDir <DestinationDirectory>] [--solutionName <CustomName>] [--solutionFormat <slnx|sln>] [--includeGitHubWorkflow <None|Basic|Complete>] [--branchName <BranchName>] [--preserveHistory] [--debug]");
             return;
         }
 
@@ -75,6 +81,13 @@ class Program
         if (!validWorkflowTypes.Contains(IncludeGitHubWorkflow, StringComparer.Ordinal))
         {
             Console.WriteLine($"Invalid GitHub workflow type '{IncludeGitHubWorkflow}'. Valid options are: None, Basic, Complete");
+            return;
+        }
+
+        string[] validSolutionFormats = { "slnx", "sln" };
+        if (!validSolutionFormats.Contains(SolutionFormat, StringComparer.OrdinalIgnoreCase))
+        {
+            Console.WriteLine($"Invalid solution format '{SolutionFormat}'. Valid options are: slnx, sln");
             return;
         }
 
@@ -146,19 +159,19 @@ class Program
                 }
 
                 // Command to create a new project and solution in the destination directory
-                // Note: --format sln is required on .NET 10+ to ensure .sln format compatibility with DataMiner DIS
-                // Starting with .NET 10, dotnet new sln can create .slnx files, which are not yet supported by DIS
-                // We try with --format first, and fall back to the old way if the option is not available
+                // Starting with .NET 10, dotnet new sln can create .slnx files by default
+                // Only specify --format when explicitly requesting .sln
+                string formatArgument = SolutionFormat.Equals("sln", StringComparison.OrdinalIgnoreCase) ? "--format sln" : string.Empty;
                 string createProjectCommand =
                     $"cd \"{DestinationDirectory}\" && " +
                     $"dotnet new dataminer-package-project -o \"{packageProjectName}\" -n \"{packageProjectName}\" -auth \"\" -cdp true -I {IncludeGitHubWorkflow} --force && " +
-                    $"dotnet new sln -n \"{solutionName}\" --format sln && " +
+                    $"dotnet new sln -n \"{solutionName}\" {formatArgument}".TrimEnd() + " && " +
                     $"dotnet sln add \"{packageProjectName}/{packageProjectName}.csproj\"";
 
                 var output = CommandExecutor.ExecuteCommand(createProjectCommand, returnOutput: true);
                 
                 // Check if the command failed due to --format option not being available
-                if (output != null && output.Contains("'--format' is not a valid option"))
+                if (!string.IsNullOrEmpty(formatArgument) && output != null && output.Contains("'--format' is not a valid option"))
                 {
                     Logger.LogDebug("--format option not available, retrying without it...");
                     
