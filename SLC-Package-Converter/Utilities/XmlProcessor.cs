@@ -50,8 +50,7 @@ namespace SLC_Package_Converter.Utilities
             try
             {
                 // Get all XML files in the source directory
-                string[] xmlFiles = Directory.GetFiles(sourceDir, "*.xml", SearchOption.TopDirectoryOnly);
-                foreach (string file in xmlFiles)
+                foreach (string file in Directory.EnumerateFiles(sourceDir, "*.xml", SearchOption.TopDirectoryOnly))
                 {
                     try
                     {
@@ -128,7 +127,7 @@ namespace SLC_Package_Converter.Utilities
                                 {
                                     foreach (string skippedFile in Directory.EnumerateFiles(skippedDir, "*", SearchOption.AllDirectories))
                                     {
-                                        processedFiles.Add(skippedFile);
+                                        processedFiles.Add(Path.GetFullPath(skippedFile));
                                     }
                                 }
 
@@ -154,7 +153,6 @@ namespace SLC_Package_Converter.Utilities
                                 newName = uniqueName;
                             }
                             processedProjectNames.Add(newName);
-                            convertedProjectCount++;
 
                             // Track the processed XML file
                             processedFiles.Add(file);
@@ -373,6 +371,9 @@ namespace SLC_Package_Converter.Utilities
                             
                             // Add DLL references from XML Param elements to the .csproj
                             AddDllReferencesToCsproj(scriptExe.DllReferences, Path.Combine(projectDirectory, $"{newName}.csproj"));
+
+                            // Count this project as successfully converted
+                            convertedProjectCount++;
                         }
                     }
                     catch (XmlException ex)

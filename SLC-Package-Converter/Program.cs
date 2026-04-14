@@ -207,7 +207,7 @@ class Program
             // adding references, or creating a branch since the tool's purpose is XML conversion
             if (convertedProjectCount == 0)
             {
-                Logger.LogWarning("No XML files were converted. Please verify that the source directory contains valid XML files or check the logs above for processing errors. The package converter completed successfully without making any changes.");
+                Logger.LogWarning("No projects were converted. Please verify that the source directory contains valid XML files or check the logs above for processing errors. The package converter completed successfully without making any changes.");
                 return;
             }
 
