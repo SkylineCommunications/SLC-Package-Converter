@@ -154,14 +154,14 @@ namespace SLC_Package_Converter.Utilities
                             }
                             processedProjectNames.Add(newName);
 
-                            // Track the processed XML file
-                            processedFiles.Add(file);
+                            // Track the processed XML file (normalize to absolute path to match FileInfo.FullName in DirectoryHelper)
+                            processedFiles.Add(Path.GetFullPath(file));
 
                             // Track the associated csproj file (only if it exists)
                             string originalCsprojPath = Path.Combine(Path.Combine(Path.GetDirectoryName(file)!, projectName), $"{projectName}.csproj");
                             if (File.Exists(originalCsprojPath))
                             {
-                                processedFiles.Add(originalCsprojPath);
+                                processedFiles.Add(Path.GetFullPath(originalCsprojPath));
                             }
 
                             // Create the ScriptExe object from the XML element
