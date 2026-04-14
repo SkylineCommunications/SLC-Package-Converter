@@ -43,14 +43,14 @@ namespace SLC_Package_Converter.Utilities
         }
 
         // Processes XML files in the source directory.
-        public static HashSet<string> ProcessXmlFiles(string sourceDir, string destDir, string? slnFile)
+        public static (HashSet<string> processedFiles, int convertedProjectCount) ProcessXmlFiles(string sourceDir, string destDir, string? slnFile)
         {
             var processedFiles = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            int convertedProjectCount = 0;
             try
             {
                 // Get all XML files in the source directory
-                string[] xmlFiles = Directory.GetFiles(sourceDir, "*.xml", SearchOption.TopDirectoryOnly);
-                foreach (string file in xmlFiles)
+                foreach (string file in Directory.EnumerateFiles(sourceDir, "*.xml", SearchOption.TopDirectoryOnly))
                 {
                     try
                     {
@@ -118,6 +118,19 @@ namespace SLC_Package_Converter.Utilities
                             if (projectName.EndsWith("_63000", StringComparison.OrdinalIgnoreCase))
                             {
                                 Logger.LogInfo($"Skipping EXE block '{projectName}' - AutomationScript_ClassLibrary references are excluded.");
+
+                                // Mark all files in the _63000 source directory as processed so
+                                // DirectoryHelper.CopyOtherDirectories does not copy them over and
+                                // overwrite the freshly generated SDK-style .csproj.
+                                string skippedDir = Path.Combine(Path.GetDirectoryName(file)!, projectName);
+                                if (Directory.Exists(skippedDir))
+                                {
+                                    foreach (string skippedFile in Directory.EnumerateFiles(skippedDir, "*", SearchOption.AllDirectories))
+                                    {
+                                        processedFiles.Add(Path.GetFullPath(skippedFile));
+                                    }
+                                }
+
                                 continue;
                             }
                             
@@ -141,14 +154,14 @@ namespace SLC_Package_Converter.Utilities
                             }
                             processedProjectNames.Add(newName);
 
-                            // Track the processed XML file
-                            processedFiles.Add(file);
+                            // Track the processed XML file (normalize to absolute path to match FileInfo.FullName in DirectoryHelper)
+                            processedFiles.Add(Path.GetFullPath(file));
 
                             // Track the associated csproj file (only if it exists)
                             string originalCsprojPath = Path.Combine(Path.Combine(Path.GetDirectoryName(file)!, projectName), $"{projectName}.csproj");
                             if (File.Exists(originalCsprojPath))
                             {
-                                processedFiles.Add(originalCsprojPath);
+                                processedFiles.Add(Path.GetFullPath(originalCsprojPath));
                             }
 
                             // Create the ScriptExe object from the XML element
@@ -358,6 +371,9 @@ namespace SLC_Package_Converter.Utilities
                             
                             // Add DLL references from XML Param elements to the .csproj
                             AddDllReferencesToCsproj(scriptExe.DllReferences, Path.Combine(projectDirectory, $"{newName}.csproj"));
+
+                            // Count this project as successfully converted
+                            convertedProjectCount++;
                         }
                     }
                     catch (XmlException ex)
@@ -369,8 +385,8 @@ namespace SLC_Package_Converter.Utilities
                         Logger.LogError($"Error processing file {file}: {ex.Message}");
                     }
                 }
-                // Return the set of processed files (may be empty); Program.cs will check count and display appropriate warning
-                return processedFiles;
+                // Return processed files and the count of actually converted projects
+                return (processedFiles, convertedProjectCount);
             }
             catch (Exception ex)
             {

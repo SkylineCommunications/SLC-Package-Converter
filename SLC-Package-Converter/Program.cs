@@ -200,14 +200,14 @@ class Program
 
             // Process XML files in the source directory and copy other directories
                 Logger.LogDebug("Processing XML files...");
-            var processedFiles = XmlProcessor.ProcessXmlFiles(SourceDirectory, DestinationDirectory, destSlnFile);
+            var (processedFiles, convertedProjectCount) = XmlProcessor.ProcessXmlFiles(SourceDirectory, DestinationDirectory, destSlnFile);
             
-            // Check if any files were processed
+            // Check if any projects were converted
             // If no XML files were converted, there's no point in copying other files,
             // adding references, or creating a branch since the tool's purpose is XML conversion
-            if (processedFiles.Count == 0)
+            if (convertedProjectCount == 0)
             {
-                Logger.LogWarning("No XML files were converted. Please verify that the source directory contains valid XML files or check the logs above for processing errors. The package converter completed successfully without making any changes.");
+                Logger.LogWarning("No projects were converted. Please verify that the source directory contains valid XML files or check the logs above for processing errors. The package converter completed successfully without making any changes.");
                 return;
             }
 
