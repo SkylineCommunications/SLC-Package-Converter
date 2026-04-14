@@ -118,6 +118,19 @@ namespace SLC_Package_Converter.Utilities
                             if (projectName.EndsWith("_63000", StringComparison.OrdinalIgnoreCase))
                             {
                                 Logger.LogInfo($"Skipping EXE block '{projectName}' - AutomationScript_ClassLibrary references are excluded.");
+
+                                // Mark all files in the _63000 source directory as processed so
+                                // DirectoryHelper.CopyOtherDirectories does not copy them over and
+                                // overwrite the freshly generated SDK-style .csproj.
+                                string skippedDir = Path.Combine(Path.GetDirectoryName(file)!, projectName);
+                                if (Directory.Exists(skippedDir))
+                                {
+                                    foreach (string skippedFile in Directory.GetFiles(skippedDir, "*", SearchOption.AllDirectories))
+                                    {
+                                        processedFiles.Add(skippedFile);
+                                    }
+                                }
+
                                 continue;
                             }
                             
