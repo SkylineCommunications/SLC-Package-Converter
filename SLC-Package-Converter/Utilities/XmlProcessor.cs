@@ -43,9 +43,10 @@ namespace SLC_Package_Converter.Utilities
         }
 
         // Processes XML files in the source directory.
-        public static HashSet<string> ProcessXmlFiles(string sourceDir, string destDir, string? slnFile)
+        public static (HashSet<string> processedFiles, int convertedProjectCount) ProcessXmlFiles(string sourceDir, string destDir, string? slnFile)
         {
             var processedFiles = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            int convertedProjectCount = 0;
             try
             {
                 // Get all XML files in the source directory
@@ -125,7 +126,7 @@ namespace SLC_Package_Converter.Utilities
                                 string skippedDir = Path.Combine(Path.GetDirectoryName(file)!, projectName);
                                 if (Directory.Exists(skippedDir))
                                 {
-                                    foreach (string skippedFile in Directory.GetFiles(skippedDir, "*", SearchOption.AllDirectories))
+                                    foreach (string skippedFile in Directory.EnumerateFiles(skippedDir, "*", SearchOption.AllDirectories))
                                     {
                                         processedFiles.Add(skippedFile);
                                     }
@@ -153,6 +154,7 @@ namespace SLC_Package_Converter.Utilities
                                 newName = uniqueName;
                             }
                             processedProjectNames.Add(newName);
+                            convertedProjectCount++;
 
                             // Track the processed XML file
                             processedFiles.Add(file);
@@ -382,8 +384,8 @@ namespace SLC_Package_Converter.Utilities
                         Logger.LogError($"Error processing file {file}: {ex.Message}");
                     }
                 }
-                // Return the set of processed files (may be empty); Program.cs will check count and display appropriate warning
-                return processedFiles;
+                // Return processed files and the count of actually converted projects
+                return (processedFiles, convertedProjectCount);
             }
             catch (Exception ex)
             {
